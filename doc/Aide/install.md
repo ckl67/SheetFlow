@@ -51,10 +51,5 @@ git config --global user.name "Votre Nom"
 git add .
 
 git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/tonusername/SheetFlow.git
-git push -u origin main
-
-Git se base sur le dossier, pas sur package.json.name
-
-Tu peux donc garder la majuscule pour l’esthétique du repo
+git remote add origin https://github.com/ckl67/SheetFlow.git
+git push -u origin master
