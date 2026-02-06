@@ -1,0 +1,32 @@
+{
+  // 🔹 Emmet configuration pour JSX/React
+  "emmet.includeLanguages": {
+    "javascript": "javascriptreact",
+    "typescript": "typescriptreact"
+  },
+  "emmet.triggerExpansionOnTab": true,
+
+  // 🔹 Formatage automatique
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  // 🔹 ESLint integration
+  "eslint.enable": true,
+  "eslint.run": "onSave",
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+
+  // 🔹 React snippets (ES7+ React/Redux/React-Native snippets)
+  "editor.snippetSuggestions": "top",
+
+  // 🔹 Autres conforts de dev
+  "files.autoSave": "onFocusChange",
+  "editor.tabSize": 2,
+  "editor.detectIndentation": false,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true
+}

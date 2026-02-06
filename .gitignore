@@ -7,13 +7,22 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies & builds
+# Git ignore récursivement par défaut, donc :
+# ignorera :
+# frontend/node_modules et backend/node_modules
 node_modules
 dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Environment en prévision et
+.env
+.env.*
+
+# Editor / OS
 .vscode/*
+!.vscode/settings.json
 !.vscode/extensions.json
 .idea
 .DS_Store
