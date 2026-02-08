@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SheetAble/SheetAble/backend/api/utils"
+	"backend/api/utils"
 	"github.com/badoux/checkmail"
 	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"

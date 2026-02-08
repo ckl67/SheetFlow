@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	. "github.com/SheetAble/SheetAble/backend/api/config"
+	. "backend/api/config"
 )
 
 // POST request onto pdf creation Locat !

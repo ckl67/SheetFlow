@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/SheetAble/SheetAble/backend/api/auth"
-	. "github.com/SheetAble/SheetAble/backend/api/config"
-	"github.com/SheetAble/SheetAble/backend/api/forms"
-	"github.com/SheetAble/SheetAble/backend/api/models"
-	"github.com/SheetAble/SheetAble/backend/api/utils"
-	"github.com/SheetAble/SheetAble/backend/api/utils/formaterror"
+	"backend/api/auth"
+	. "backend/api/config"
+	"backend/api/forms"
+	"backend/api/models"
+	"backend/api/utils"
+	"backend/api/utils/formaterror"
 	"github.com/gin-gonic/gin"
 
 	"net/http"

@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 
-	"github.com/SheetAble/SheetAble/backend/api/config"
+	"backend/api/config"
 	gomail "gopkg.in/mail.v2"
 )
 
