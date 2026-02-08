@@ -6,7 +6,7 @@ sudo apt autoremove
 
 ## Installer nvm
 
-Permet plus facilemnet de gérer les versions nodejs
+Permet d'installer Nodes plus facilemnet de gérer les versions nodejs
 
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source ~/.bashrc
