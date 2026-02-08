@@ -3,9 +3,9 @@ package middlewares
 import (
 	"net/http"
 
-	"github.com/SheetAble/SheetAble/backend/api/auth"
-	"github.com/SheetAble/SheetAble/backend/api/config"
-	"github.com/SheetAble/SheetAble/backend/api/utils"
+	"backend/api/auth"
+	"backend/api/config"
+	"backend/api/utils"
 	"github.com/gin-gonic/gin"
 )
 

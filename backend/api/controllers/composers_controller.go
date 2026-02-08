@@ -7,10 +7,10 @@ import (
 	"os"
 	"path"
 
-	. "github.com/SheetAble/SheetAble/backend/api/config"
-	"github.com/SheetAble/SheetAble/backend/api/forms"
-	"github.com/SheetAble/SheetAble/backend/api/models"
-	"github.com/SheetAble/SheetAble/backend/api/utils"
+	. "backend/api/config"
+	"backend/api/forms"
+	"backend/api/models"
+	"backend/api/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/kennygrant/sanitize"
 )

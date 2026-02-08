@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/SheetAble/SheetAble/backend/api/config"
-	"github.com/SheetAble/SheetAble/backend/api/utils"
+	. "backend/api/config"
+	"backend/api/utils"
 	"github.com/lib/pq"
 
 	"github.com/jinzhu/gorm"

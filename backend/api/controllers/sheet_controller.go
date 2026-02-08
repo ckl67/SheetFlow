@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/SheetAble/SheetAble/backend/api/auth"
-	. "github.com/SheetAble/SheetAble/backend/api/config"
-	"github.com/SheetAble/SheetAble/backend/api/forms"
-	"github.com/SheetAble/SheetAble/backend/api/models"
-	"github.com/SheetAble/SheetAble/backend/api/utils"
+	"backend/api/auth"
+	. "backend/api/config"
+	"backend/api/forms"
+	"backend/api/models"
+	"backend/api/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 )
@@ -50,7 +50,7 @@ func (server *Server) GetSheetsPage(c *gin.Context) {
 	c.JSON(http.StatusOK, pageNew)
 }
 
-/*	
+/*
 	Get PDF file and information about an individual sheet.
 	Example request:
 		GET /sheet/Étude N. 1
@@ -229,7 +229,7 @@ func (server *Server) UpdateSheetInformationText(c *gin.Context) {
 }
 
 func getSheet(db *gorm.DB, c *gin.Context) *models.Sheet {
-	
+
 	// Find a sheet by its name
 	sheetName := c.Param("sheetName")
 	if sheetName == "" {

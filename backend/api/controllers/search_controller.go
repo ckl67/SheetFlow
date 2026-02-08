@@ -3,7 +3,7 @@ package controllers
 import (
 	"net/http"
 
-	"github.com/SheetAble/SheetAble/backend/api/models"
+	"backend/api/models"
 	"github.com/gin-gonic/gin"
 )
 

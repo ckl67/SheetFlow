@@ -8,13 +8,13 @@ import (
 	"path"
 	"time"
 
-	. "github.com/SheetAble/SheetAble/backend/api/config"
+	. "backend/api/config"
 	"github.com/gin-gonic/gin"
 
 	"github.com/jinzhu/gorm"
 	"github.com/rs/cors"
 
-	"github.com/SheetAble/SheetAble/backend/api/models"
+	"backend/api/models"
 	"github.com/gorilla/handlers"
 	_ "github.com/jinzhu/gorm/dialects/mysql"    // mysql database driver
 	_ "github.com/jinzhu/gorm/dialects/postgres" // postgres database driver
@@ -84,7 +84,7 @@ func (server *Server) Initialize() {
 
 func (server *Server) Run(addr string, dev bool) {
 	fmt.Printf("Listening to port %v\n", addr)
-	/* 
+	/*
 		cors.Default() setup the middleware with default options being
 		all origins accepted with simple methods (GET, POST).
 		See documentation below for more options.
@@ -109,7 +109,7 @@ func (server *Server) Run(addr string, dev bool) {
 		AllowCredentials: true,
 	})
 
-	// Check if run in dev mode, so you can enable CORS or not 
+	// Check if run in dev mode, so you can enable CORS or not
 	srvHandler := handlers.LoggingHandler(os.Stdout, c.Handler(server.Router))
 
 	if !dev {

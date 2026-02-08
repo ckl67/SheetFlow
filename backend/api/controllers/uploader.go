@@ -18,14 +18,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/SheetAble/SheetAble/backend/api/auth"
-	"github.com/SheetAble/SheetAble/backend/api/forms"
+	"backend/api/auth"
+	"backend/api/forms"
 	. "github.com/fiam/gounidecode/unidecode"
 	"github.com/gin-gonic/gin"
 
-	. "github.com/SheetAble/SheetAble/backend/api/config"
-	"github.com/SheetAble/SheetAble/backend/api/models"
-	"github.com/SheetAble/SheetAble/backend/api/utils"
+	. "backend/api/config"
+	"backend/api/models"
+	"backend/api/utils"
 	"github.com/kennygrant/sanitize"
 )
 

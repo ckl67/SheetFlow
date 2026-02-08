@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/SheetAble/SheetAble/backend/api/models"
+	"backend/api/models"
 	"github.com/jinzhu/gorm"
 )
 

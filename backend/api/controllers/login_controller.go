@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/SheetAble/SheetAble/backend/api/auth"
-	. "github.com/SheetAble/SheetAble/backend/api/config"
-	"github.com/SheetAble/SheetAble/backend/api/models"
-	"github.com/SheetAble/SheetAble/backend/api/utils/formaterror"
+	"backend/api/auth"
+	. "backend/api/config"
+	"backend/api/models"
+	"backend/api/utils/formaterror"
 	"golang.org/x/crypto/bcrypt"
 )
 

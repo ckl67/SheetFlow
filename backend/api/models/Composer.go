@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/SheetAble/SheetAble/backend/api/config"
+	. "backend/api/config"
 
 	"github.com/jinzhu/gorm"
 	"github.com/kennygrant/sanitize"

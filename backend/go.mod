@@ -1,9 +1,8 @@
-module github.com/SheetAble/SheetAble/backend
+module backend
 
 go 1.19
 
 require (
-	github.com/GeertJohan/go.rice v1.0.3
 	github.com/badoux/checkmail v1.2.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fiam/gounidecode v0.0.0-20150629112515-8deddbd03fec
@@ -22,7 +21,6 @@ require (
 
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
-	github.com/daaku/go.zipexe v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
