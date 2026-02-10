@@ -1,23 +1,22 @@
 package controllers
 
 import (
-	"fmt"
-	"time"
-
 	"backend/api/auth"
-	. "backend/api/config"
 	"backend/api/forms"
 	"backend/api/models"
 	"backend/api/utils"
 	"backend/api/utils/formaterror"
-	"github.com/gin-gonic/gin"
-
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
+
+	. "backend/api/config"
+
+	"github.com/gin-gonic/gin"
 )
 
 func (server *Server) CreateUser(c *gin.Context) {
-
 	// Check for authentication
 	token := utils.ExtractToken(c)
 	uid, err := auth.ExtractTokenID(token, Config().ApiSecret)
@@ -44,7 +43,6 @@ func (server *Server) CreateUser(c *gin.Context) {
 		return
 	}
 	userCreated, err := user.SaveUser(server.DB)
-
 	if err != nil {
 		formattedError := formaterror.FormatError(err.Error())
 		c.String(http.StatusUnprocessableEntity, formattedError.Error())
@@ -55,7 +53,6 @@ func (server *Server) CreateUser(c *gin.Context) {
 }
 
 func (server *Server) GetUsers(c *gin.Context) {
-
 	// Check for authentication
 	token := utils.ExtractToken(c)
 	uid, err := auth.ExtractTokenID(token, Config().ApiSecret)
@@ -170,7 +167,6 @@ func (server *Server) UpdateUser(c *gin.Context) {
 }
 
 func (server *Server) DeleteUser(c *gin.Context) {
-
 	uidString := c.Param("id")
 	uid, err := strconv.ParseUint(uidString, 10, 32)
 	if err != nil {

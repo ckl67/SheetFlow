@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"backend/api/models"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,12 +10,12 @@ import (
 	"time"
 
 	. "backend/api/config"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/jinzhu/gorm"
 	"github.com/rs/cors"
 
-	"backend/api/models"
 	"github.com/gorilla/handlers"
 	_ "github.com/jinzhu/gorm/dialects/mysql"    // mysql database driver
 	_ "github.com/jinzhu/gorm/dialects/postgres" // postgres database driver
@@ -22,13 +23,15 @@ import (
 )
 
 type Server struct {
-	DB     *gorm.DB
-	Router *gin.Engine
+	DB      *gorm.DB
+	Router  *gin.Engine
+	Version string
 }
 
-func (server *Server) Initialize() {
-
+func (server *Server) Initialize(version string) {
 	var err error
+
+	server.Version = version
 
 	// Set Release Mode
 	if !Config().Dev {

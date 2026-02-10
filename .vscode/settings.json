@@ -1,16 +1,65 @@
 {
-  // 🔹 Emmet configuration pour JSX/React
+  // =========================================================
+  // 🔹 Emmet configuration pour JSX / React
+  // Permet d’utiliser les abréviations Emmet (HTML-like)
+  // dans des fichiers JavaScript / TypeScript React
+  // =========================================================
   "emmet.includeLanguages": {
     "javascript": "javascriptreact",
     "typescript": "typescriptreact"
   },
   "emmet.triggerExpansionOnTab": true,
 
-  // 🔹 Formatage automatique
+  // =========================================================
+  // 🔹 Formatage automatique global
+  // Déclenche le formatter du langage courant à chaque sauvegarde
+  // Le formatter exact dépend du langage (Go, JS, TS, etc.)
+  // =========================================================
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
 
-  // 🔹 ESLint integration
+  // =========================================================
+  // 🔹 Prettier UNIQUEMENT pour le frontend
+  // Prettier est adapté à JS / TS mais PAS à Go
+  // On le limite donc explicitement aux fichiers frontend
+  // =========================================================
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // =========================================================
+  // 🔹 Configuration Go
+  // Utilise le formateur officiel Go (gofumpt)
+  // et organise automatiquement les imports à la sauvegarde
+  // =========================================================
+  "[go]": {
+    // Active le formatage automatique pour les fichiers .go
+    "editor.formatOnSave": true,
+
+    // Trie les imports, supprime les imports inutilisés
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+
+  // Outil de formatage Go utilisé par l’extension Go
+  // - gofmt   : standard officiel
+  // - gofumpt : version plus stricte (recommandée backend)
+  "go.formatTool": "gofumpt",
+
+  // =========================================================
+  // 🔹 ESLint (analyse statique JS / TS)
+  // ESLint vérifie les règles, les erreurs potentielles
+  // et complète Prettier (qui gère surtout le style)
+  // =========================================================
   "eslint.enable": true,
   "eslint.run": "onSave",
   "eslint.validate": [
@@ -20,13 +69,29 @@
     "typescriptreact"
   ],
 
-  // 🔹 React snippets (ES7+ React/Redux/React-Native snippets)
+  // =========================================================
+  // 🔹 Snippets React
+  // Place les snippets (rafce, useState, etc.) en priorité
+  // dans les suggestions d’autocomplétion
+  // =========================================================
   "editor.snippetSuggestions": "top",
 
-  // 🔹 Autres conforts de dev
+  // =========================================================
+  // 🔹 Confort et hygiène de code (tous langages)
+  // =========================================================
+
+  // Sauvegarde automatique quand on change d’onglet
   "files.autoSave": "onFocusChange",
+
+  // Force une indentation à 2 espaces
   "editor.tabSize": 2,
+
+  // Ignore l’indentation détectée automatiquement dans les fichiers
   "editor.detectIndentation": false,
+
+  // Supprime les espaces inutiles en fin de ligne
   "files.trimTrailingWhitespace": true,
+
+  // Ajoute une ligne vide à la fin du fichier (bonne pratique POSIX / Go)
   "files.insertFinalNewline": true
 }

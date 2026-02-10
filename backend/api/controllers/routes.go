@@ -2,108 +2,81 @@ package controllers
 
 import (
 	"net/http"
-	"path"
-	"time"
+	//"path/filepath"
 
-	"github.com/SheetAble/SheetAble/backend/api/middlewares"
+	//"backend/"
+	"backend/api/middlewares"
+
 	"github.com/gin-gonic/gin"
-
-	rice "github.com/GeertJohan/go.rice"
 )
 
 func (server *Server) SetupRouter() {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
-	// Health checks
+	// Health check
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "OK"})
 	})
 
+	// Version info
+	r.GET("/version", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"version": server.Version})
+	})
+
+	// API root
+	r.GET("/api", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "API is running"})
+	})
+
 	api := r.Group("/api")
 
-	api.GET("", server.Home)
-	api.GET("/version", server.Version)
-	// SecureApi is still rooted at /api/... but it has the auth middleware so it'server routes check token on each call
-	secureApi := api.Group("")
-	secureApi.Use(middlewares.AuthMiddleware())
-
-	// Login routes
+	// Public routes
 	api.POST("/login", server.Login)
-
-	// Users routes
-	api.POST("/users", server.CreateUser)
-	secureApi.GET("/users", server.GetUsers)
-	secureApi.GET("/users/:id", server.GetUser)
-	secureApi.PUT("/users/:id", server.UpdateUser)
-	secureApi.DELETE("/users/:id", server.DeleteUser)
-	api.POST("/reset_password", server.ResetPassword)
 	api.POST("/request_password_reset", server.RequestPasswordReset)
 
-	// Sheet routes
-	secureApi.POST("/upload", server.UploadFile)
-	secureApi.GET("/sheets", server.GetSheetsPage)
-	secureApi.POST("/sheets", server.GetSheetsPage)
+	// Secure routes
+	secure := api.Group("")
+	secure.Use(middlewares.AuthMiddleware())
+
+	// Users
+	api.POST("/reset_password", server.ResetPassword)
+	secure.GET("/users", server.GetUsers)
+	secure.GET("/users/:id", server.GetUser)
+	secure.POST("/users", server.CreateUser)
+	secure.PUT("/users/:id", server.UpdateUser)
+	secure.DELETE("/users/:id", server.DeleteUser)
+
+	// Sheets
+	secure.GET("/sheets", server.GetSheetsPage)
+	secure.POST("/sheets", server.GetSheetsPage)
+	secure.GET("/sheet/:sheetName", server.GetSheet)
+	secure.PUT("/sheet/:sheetName", server.UpdateSheet)
+	secure.DELETE("/sheet/:sheetName", server.DeleteSheet)
+	secure.POST("/upload", server.UploadFile)
+	secure.PUT("/sheet/:sheetName/info", server.UpdateSheetInformationText)
+	secure.POST("/sheet/:sheetName/info", server.UpdateSheetInformationText)
+
+	// Thumbnails & PDFs
 	api.GET("/sheet/thumbnail/:name", server.GetThumbnail)
-	secureApi.GET("/sheet/pdf/:composer/:sheetName", server.GetPDF)
-	secureApi.GET("/sheet/:sheetName", server.GetSheet)
-	secureApi.PUT("/sheet/:sheetName", server.UpdateSheet)
-	secureApi.DELETE("/sheet/:sheetName", server.DeleteSheet)
-	secureApi.GET("/search/:searchValue", server.SearchSheets)
-	secureApi.GET("/search/composers/:searchValue", server.SearchComposers)
-	secureApi.PUT("/sheet/:sheetName/info", server.UpdateSheetInformationText)
-	secureApi.POST("/sheet/:sheetName/info", server.UpdateSheetInformationText)
+	secure.GET("/sheet/pdf/:composer/:sheetName", server.GetPDF)
 
-	// Sheet tag routes
-	secureApi.DELETE("/tag/sheet/:sheetName", server.DeleteTag)
-	secureApi.POST("/tag/delete/sheet/:sheetName", server.DeleteTag)
-	secureApi.POST("/tag/sheet/:sheetName", server.AppendTag)
-	secureApi.GET("/tag/sheet/:sheetName", server.AppendTag)
-	secureApi.GET("/tag", server.FindSheetsByTag)
-	secureApi.POST("/tag", server.FindSheetsByTag)
+	// Search
+	secure.GET("/search/:searchValue", server.SearchSheets)
+	secure.GET("/search/composers/:searchValue", server.SearchComposers)
 
-	// Composer routes
-	secureApi.GET("/composers", server.GetComposersPage)
-	secureApi.POST("/composers", server.GetComposersPage)
-	secureApi.PUT("/composer/:composerName", server.UpdateComposer)
-	secureApi.DELETE("/composer/:composerName", server.DeleteComposer)
+	// Tags
+	secure.POST("/tag/sheet/:sheetName", server.AppendTag)
+	secure.DELETE("/tag/sheet/:sheetName", server.DeleteTag)
+	secure.GET("/tag", server.FindSheetsByTag)
+	secure.POST("/tag", server.FindSheetsByTag)
+
+	// Composers
+	secure.GET("/composers", server.GetComposersPage)
+	secure.POST("/composers", server.GetComposersPage)
+	secure.PUT("/composer/:composerName", server.UpdateComposer)
+	secure.DELETE("/composer/:composerName", server.DeleteComposer)
 	api.GET("/composer/portrait/:composerName", server.ServePortraits)
 
-	// Serve React
-	appBox := rice.MustFindBox("../../../frontend/build")
-
-	// r.StaticFS("/static", appBox.HTTPBox())
-	r.GET("/static/*filepath", func(c *gin.Context) {
-		filepath := c.Request.URL.String()
-		file, err := appBox.Open(filepath)
-		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
-			return
-		}
-
-		http.ServeContent(c.Writer, c.Request, path.Base(filepath), time.Time{}, file)
-
-	})
-	r.NoRoute(func(c *gin.Context) {
-		if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "API route not found",
-			})
-			return
-		}
-		serveAppHandler(appBox)(c.Writer, c.Request)
-	})
-
 	server.Router = r
-}
-
-func serveAppHandler(app *rice.Box) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		indexFile, err := app.Open("index.html")
-		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		http.ServeContent(w, r, "index.html", time.Time{}, indexFile)
-	}
 }

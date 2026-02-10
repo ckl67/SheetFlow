@@ -32,18 +32,6 @@ npm create vite@latest SheetFlow
 
 npm install react-router-dom
 
-# Visual Code
-
-## Extensions :
-
-ES7+ React/Redux/React-Native snippets
-ESLint Détecte : hooks mal utilisés
-Prettier - Code formatter
-
-## Configuration
-
-Fichier .vscode/settings.json
-
 # Git
 
 cd SheetFlow
