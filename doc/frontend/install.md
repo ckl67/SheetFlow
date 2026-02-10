@@ -6,7 +6,7 @@ sudo apt autoremove
 
 ## Installer nvm
 
-Permet plus facilemnet de gérer les versions nodejs
+Permet d'installer Nodes plus facilemnet de gérer les versions nodejs
 
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source ~/.bashrc
@@ -30,17 +30,7 @@ npm create vite@latest SheetFlow
 ◇ Install with npm and start now?
 │ Yes
 
-# Visual Code
-
-## Extensions :
-
-ES7+ React/Redux/React-Native snippets
-ESLint Détecte : hooks mal utilisés
-Prettier - Code formatter
-
-## Configuration
-
-Fichier .vscode/settings.json
+npm install react-router-dom
 
 # Git
 
