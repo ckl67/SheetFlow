@@ -7,6 +7,7 @@ import (
 	"backend/api/utils"
 	"backend/api/utils/formaterror"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -36,14 +37,18 @@ func (server *Server) CreateUser(c *gin.Context) {
 		c.String(http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	user.Prepare()
+
+	user.PrepareForCreate()
 	err = user.Validate("")
 	if err != nil {
 		c.String(http.StatusUnprocessableEntity, err.Error())
 		return
 	}
+	// Dans SaveUser() un Hoock va appeler BeforeSave()
+	log.Printf("User struct: %+v\n", user)
 	userCreated, err := user.SaveUser(server.DB)
 	if err != nil {
+		// log.Println("RAW ERROR:", err.Error())
 		formattedError := formaterror.FormatError(err.Error())
 		c.String(http.StatusUnprocessableEntity, formattedError.Error())
 		return
@@ -87,6 +92,7 @@ func (server *Server) GetUser(c *gin.Context) {
 	userId, err := auth.ExtractTokenID(token, Config().ApiSecret)
 	if err != nil {
 		c.String(http.StatusUnauthorized, "Unauthorized")
+		return
 	}
 
 	var newUid uint32 = uint32(uid)
@@ -113,17 +119,25 @@ func (server *Server) GetUser(c *gin.Context) {
 	c.JSON(http.StatusOK, userGotten)
 }
 
+// UpdateUser updates a user. Only admins and the user itself are able to update a user.
+// Admins are able to update the role of a user, while users themselves are not able to update their own role.
+// To update a user go to endpoint:
+// PUT: /api/users/:id
+//
+//	Body: {
+//		"email": "your-updated-email"
+//		"password": "your-updated-password"
+//	}
+//
+// Admins can also update the role of a user by adding the "role" field to the body with either "admin" or "user" as value.
+// Example body for admin updating a user:
+//
+//	{
+//		"email": "your-updated-email"
+//		"password": "your-updated-password"
+//		"role": "admin"
+//	}
 func (server *Server) UpdateUser(c *gin.Context) {
-	/*
-		To update a user go to endpoint:
-		PUT: /api/users/:id
-		Body: {
-			"email": "your-updated-email"
-			"password": "your-updated-password"
-		}
-
-	*/
-
 	uidString := c.Param("id")
 	uid, err := strconv.ParseUint(uidString, 10, 32)
 	if err != nil {
@@ -134,6 +148,9 @@ func (server *Server) UpdateUser(c *gin.Context) {
 	var user models.User
 	// Set updated At param
 	user.UpdatedAt = time.Now()
+
+	// Gin remplit le struct user avec les données JSON envoyées.
+	// Si { "role": 0 }, user.Role devient 0.
 	err = c.BindJSON(&user)
 	if err != nil {
 		c.String(http.StatusUnprocessableEntity, err.Error())
@@ -150,13 +167,23 @@ func (server *Server) UpdateUser(c *gin.Context) {
 		c.String(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 		return
 	}
-	user.Prepare()
+
+	user.PrepareForUpdate()
 	err = user.Validate("update")
 	if err != nil {
 		c.String(http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	updatedUser, err := user.UpdateAUser(server.DB, uint32(uid))
+
+	var updatedUser *models.User
+	log.Println("Updating user with ID:", uid, "by user with ID:", tokenID)
+
+	if tokenID == ADMIN_UID {
+		updatedUser, err = user.UpdateAUserAndRole(server.DB, uint32(uid))
+	} else {
+		updatedUser, err = user.UpdateAUser(server.DB, uint32(uid))
+	}
+
 	if err != nil {
 		fmt.Println(err)
 		formattedError := formaterror.FormatError(err.Error())

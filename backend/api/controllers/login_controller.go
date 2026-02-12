@@ -1,14 +1,15 @@
 package controllers
 
 import (
+	"backend/api/auth"
+	"backend/api/models"
+	"backend/api/utils/formaterror"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
-	"backend/api/auth"
 	. "backend/api/config"
-	"backend/api/models"
-	"backend/api/utils/formaterror"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -20,7 +21,7 @@ func (server *Server) Login(c *gin.Context) {
 		return
 	}
 
-	user.Prepare()
+	user.NormalizeEmail()
 	err = user.Validate("login")
 	if err != nil {
 		c.String(http.StatusUnprocessableEntity, err.Error())
@@ -36,7 +37,6 @@ func (server *Server) Login(c *gin.Context) {
 }
 
 func (server *Server) SignIn(email, password string) (string, error) {
-
 	var err error
 
 	user := models.User{}

@@ -43,6 +43,8 @@
   "[go]": {
     // Active le formatage automatique pour les fichiers .go
     "editor.formatOnSave": true,
+    "editor.inlineSuggest.enabled": true,
+
 
     // Trie les imports, supprime les imports inutilisés
     "editor.codeActionsOnSave": {

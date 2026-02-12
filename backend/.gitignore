@@ -1,11 +1,15 @@
+# Ignorer les .env
 .env
-uploaded-sheets/
-thumbnails/
-utils/app.pyc
-database.db
-backend.exe
-backend
-rice
+.env.*
+
+# Ignorer /config
+# /config/ → chemin absolu depuis la racine du repo
+# Le / au début signifie “à partir de la racine du dépôt Git”.
+# Git va ignorer uniquement le dossier config situé à la racine du repo, pas un config dans un sous-dossier.
+/config/
+
+# Exceptions pour certains fichiers
+api/config/config.go
+
+# Autres dossiers
 build/
-./config/
-config/
