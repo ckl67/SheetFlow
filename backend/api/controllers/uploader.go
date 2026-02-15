@@ -7,6 +7,10 @@
 package controllers
 
 import (
+	"backend/api/auth"
+	"backend/api/forms"
+	"backend/api/models"
+	"backend/api/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,14 +22,12 @@ import (
 	"strings"
 	"time"
 
-	"backend/api/auth"
-	"backend/api/forms"
 	. "github.com/fiam/gounidecode/unidecode"
 	"github.com/gin-gonic/gin"
+	"github.com/lib/pq"
 
 	. "backend/api/config"
-	"backend/api/models"
-	"backend/api/utils"
+
 	"github.com/kennygrant/sanitize"
 )
 
@@ -94,7 +96,8 @@ func (server *Server) UploadFile(c *gin.Context) {
 		return
 	}
 	defer theFile.Close()
-	err = createFile(uid, server, fullpath, theFile, comp, sheetName, releaseDate, uploadForm.InformationText)
+	err = createFile(uid, server, fullpath, theFile, comp, sheetName, releaseDate,
+		uploadForm.InformationText, uploadForm.Categories, uploadForm.Tags)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -110,7 +113,6 @@ func (server *Server) UploadFile(c *gin.Context) {
 }
 
 func (server *Server) UpdateSheet(c *gin.Context) {
-
 	// Check for authentication
 	token := utils.ExtractToken(c)
 	uid, err := auth.ExtractTokenID(token, Config().ApiSecret)
@@ -130,7 +132,6 @@ func (server *Server) UpdateSheet(c *gin.Context) {
 	}
 
 	server.UploadFile(c)
-
 }
 
 func getPortraitURL(composerName string) Comp {
@@ -173,7 +174,6 @@ func getPortraitURL(composerName string) Comp {
 }
 
 func safeComposer(server *Server, composer string) Comp {
-
 	compo := getPortraitURL(composer)
 
 	if compo.SafeName == "" {
@@ -207,18 +207,33 @@ func checkComposer(path string, comp Comp) string {
 	return path
 }
 
-func createFile(uid uint32, server *Server, fullpath string, file multipart.File, comp Comp, sheetName string, releaseDate string, informationText string) error {
+func createFile(
+	uid uint32,
+	server *Server,
+	fullpath string,
+	file multipart.File,
+	comp Comp,
+	sheetName string,
+	releaseDate string,
+	informationText string,
+	categories string,
+	tags string,
+) error {
 	// Create database entry
 	sheet := models.Sheet{
-		SafeSheetName:   sanitize.Name(Unidecode(sheetName)),
-		SheetName:       sheetName,
-		SafeComposer:    sanitize.Name(Unidecode(comp.CompleteName)),
-		Composer:        comp.CompleteName,
+		SafeSheetName:   sanitize.Name(Unidecode(strings.TrimSpace(sheetName))),
+		SheetName:       strings.TrimSpace(sheetName),
+		SafeComposer:    sanitize.Name(Unidecode(strings.TrimSpace(comp.CompleteName))),
+		Composer:        strings.TrimSpace(comp.CompleteName),
 		UploaderID:      uid,
 		ReleaseDate:     createDate(releaseDate),
 		InformationText: informationText,
+		Categories:      parseSemicolonList(categories),
+		Tags:            parseSemicolonList(tags),
+		PdfUrl:          "sheet/pdf/" + sanitize.Name(Unidecode(comp.CompleteName)) + "/" + sanitize.Name(Unidecode(sheetName)),
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
 	}
-	sheet.Prepare()
 
 	_, err := sheet.SaveSheet(server.DB)
 	if err != nil {
@@ -230,6 +245,52 @@ func createFile(uid uint32, server *Server, fullpath string, file multipart.File
 		return err
 	}
 	return nil
+}
+
+// Parser proprement catégories et tags
+// On split la string reçue du front en utilisant le ; comme séparateur,
+// puis on trim les espaces et on vérifie que ce n'est pas une string vide avant de l'ajouter à notre pq.StringArray.
+// Par exemple, si le front envoie "Classical; Romantic; Baroque" pour les catégories,
+// cette fonction va retourner un pq.StringArray contenant ["Classical", "Romantic", "Baroque"].
+// Si le front envoie une string vide pour les tags, cette fonction va retourner
+// un pq.StringArray vide, ce qui est géré correctement dans la base de données
+// grâce à l'initialisation dans la méthode Prepare() du modèle Sheet.
+//
+// Ceci à cause de la différence importante :
+// var a pq.StringArray        // nil
+// b := pq.StringArray{}       // slice vide
+// En JSON, a sera null, tandis que b sera [].
+// En PostgreSQL, les deux seront traités comme des tableaux vides,
+// mais il est préférable d'initialiser à une slice vide pour éviter les problèmes de nullabilité dans le code Go.
+//| Valeur | État Go        | JSON | PostgreSQL |
+//| ------ | -------------- | ---- | ---------- |
+//| nil    | non initialisé | null | NULL       |
+//| {}     | slice vide     | []   | {}         |
+
+func parseSemicolonList(input string) pq.StringArray {
+	// avec var result pq.StringArray
+	// 👉 result est nil, pas un slice vide.
+	// Donc si input == "", tu retournes nil.
+	// 	Donc aujourd’hui :
+	// Si l’utilisateur ne met rien → Categories = NULL
+	// Si l’utilisateur met "" → NULL
+	// Si l’utilisateur met " " → aussi NULL
+
+	result := pq.StringArray{} // ← slice vide garanti
+
+	if strings.TrimSpace(input) == "" {
+		return result
+	}
+
+	parts := strings.Split(input, ";")
+	for _, p := range parts {
+		clean := strings.TrimSpace(p)
+		if clean != "" {
+			result = append(result, clean)
+		}
+	}
+
+	return result
 }
 
 func createDate(date string) time.Time {

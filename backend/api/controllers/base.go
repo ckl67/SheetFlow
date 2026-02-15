@@ -62,6 +62,7 @@ func (server *Server) Initialize(version string) {
 		} else {
 			fmt.Printf("Connected to %s database...\n", DbDriver)
 		}
+
 	default:
 		if _, err := os.Stat(Config().ConfigPath); os.IsNotExist(err) {
 			_ = os.Mkdir(Config().ConfigPath, os.ModePerm)

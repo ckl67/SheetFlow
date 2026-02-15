@@ -1,20 +1,24 @@
 package models
 
 import (
+	"backend/api/utils"
 	"errors"
 	"log"
 	"os"
 	"path"
-	"strings"
 	"time"
 
 	. "backend/api/config"
-	"backend/api/utils"
+
 	"github.com/lib/pq"
 
 	"github.com/jinzhu/gorm"
 )
 
+// Sheet modéle de données pour les partitions musicales
+// distinguer deux couches orthogonales :
+// gorm:"..." → mapping base de données (ORM → schéma SQL)
+// json:"..." → mapping API HTTP (struct Go ↔ JSON)
 type Sheet struct {
 	SafeSheetName   string `gorm:"primary_key" json:"safe_sheet_name"`
 	SheetName       string `json:"sheet_name"`
@@ -25,19 +29,9 @@ type Sheet struct {
 	UploaderID      uint32         `gorm:"not null" json:"uploader_id"`
 	CreatedAt       time.Time      `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt       time.Time      `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
-	Tags            pq.StringArray `gorm:"type:text[]" json:"tags"`
+	Tags            pq.StringArray `gorm:"type:text[]" json:"tags"` // C’est un champ PostgreSQL text[].
+	Categories      pq.StringArray `gorm:"type:text[]" json:"categories"`
 	InformationText string         `json:"information_text"`
-}
-
-func (s *Sheet) Prepare() {
-	s.SheetName = strings.TrimSpace(s.SheetName)
-	s.Composer = strings.TrimSpace(s.Composer)
-	s.SafeComposer = strings.TrimSpace(s.SafeComposer)
-	s.SafeSheetName = strings.TrimSpace(s.SafeSheetName)
-	s.CreatedAt = time.Now()
-	s.UpdatedAt = time.Now()
-	s.PdfUrl = "sheet/pdf/" + s.SafeComposer + "/" + s.SafeSheetName
-	s.Tags = pq.StringArray{}
 }
 
 func (s *Sheet) SaveSheet(db *gorm.DB) (*Sheet, error) {
@@ -48,13 +42,11 @@ func (s *Sheet) SaveSheet(db *gorm.DB) (*Sheet, error) {
 	return s, nil
 }
 
-
 /*
-    log.Fatal(e) va planter le programme si le fichier n’existe pas, ce qui arrive pour les thumbnails manquants.
-    Pour corriger, il faut juste ignorer les fichiers non existants et loguer les erreurs autrement.
+log.Fatal(e) va planter le programme si le fichier n’existe pas, ce qui arrive pour les thumbnails manquants.
+Pour corriger, il faut juste ignorer les fichiers non existants et loguer les erreurs autrement.
 */
 func (s *Sheet) DeleteSheet(db *gorm.DB, sheetName string) (int64, error) {
-
 	sheet, err := s.FindSheetBySafeName(db, sheetName)
 	if err != nil {
 		if gorm.IsRecordNotFoundError(err) {
@@ -90,8 +82,6 @@ func (s *Sheet) DeleteSheet(db *gorm.DB, sheetName string) (int64, error) {
 	return db.RowsAffected, nil
 }
 
-
-
 func (s *Sheet) GetAllSheets(db *gorm.DB) (*[]Sheet, error) {
 	/*
 		This method will return max 20 sheets, to find more or specific one you need to specify it.
@@ -101,7 +91,6 @@ func (s *Sheet) GetAllSheets(db *gorm.DB) (*[]Sheet, error) {
 	sheets := []Sheet{}
 
 	err = db.Order("updated_at desc").Limit(20).Find(&sheets).Error
-
 	if err != nil {
 		return &[]Sheet{}, err
 	}
@@ -109,20 +98,16 @@ func (s *Sheet) GetAllSheets(db *gorm.DB) (*[]Sheet, error) {
 }
 
 func (s *Sheet) FindSheetBySafeName(db *gorm.DB, sheetName string) (*Sheet, error) {
-
 	// Get information of one single sheet by the safe sheet name
 	var err error
 	err = db.Model(&Sheet{}).Where("safe_sheet_name = ?", sheetName).Take(&s).Error
-
 	if err != nil {
 		return &Sheet{}, err
 	}
 	return s, nil
-
 }
 
 func (s *Sheet) List(db *gorm.DB, pagination Pagination, composer string) (*Pagination, error) {
-
 	// For pagination
 
 	var sheets []*Sheet
@@ -138,7 +123,6 @@ func (s *Sheet) List(db *gorm.DB, pagination Pagination, composer string) (*Pagi
 }
 
 func SearchSheet(db *gorm.DB, searchValue string) []*Sheet {
-
 	// Search for sheets with containing string
 	var sheets []*Sheet
 	searchValue = "%" + searchValue + "%"
@@ -147,7 +131,6 @@ func SearchSheet(db *gorm.DB, searchValue string) []*Sheet {
 }
 
 func ComposerEqual(composer string) func(db *gorm.DB) *gorm.DB {
-
 	// Scope that composer is equal to composer (if you only want sheets from a certain composer)
 	return func(db *gorm.DB) *gorm.DB {
 		return db.Where("safe_composer = ?", composer)
@@ -155,7 +138,6 @@ func ComposerEqual(composer string) func(db *gorm.DB) *gorm.DB {
 }
 
 func (s *Sheet) AppendTag(db *gorm.DB, appendTag string) {
-
 	// Append a new tag to a sheet
 	newArray := append(s.Tags, appendTag)
 
@@ -163,7 +145,6 @@ func (s *Sheet) AppendTag(db *gorm.DB, appendTag string) {
 }
 
 func (s *Sheet) DelteTag(db *gorm.DB, value string) bool {
-
 	// Deleting a tag by it's value
 	index := utils.FindIndexByValue(s.Tags, value)
 
@@ -186,7 +167,6 @@ func (S *Sheet) UpdateSheetInformationText(db *gorm.DB, value string, sheet *She
 }
 
 func FindSheetByTag(db *gorm.DB, tag string) []*Sheet {
-
 	var allSheets []*Sheet
 	var affectedSheets []*Sheet
 

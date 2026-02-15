@@ -86,6 +86,19 @@ var u User
 foundUser, _ := u.FindUserByEmail(db, "bob@example.com")
 ```
 
+# Slice
+
+Le problème avec un tableau c’est qu’il a une taille fixe, il faut donc absolument connaître sa taille au moment de sa déclaration ce qui n’est pas vraiment évident car on peut très vite s’apercevoir plus tard dans notre code que la taille allouée au départ à notre tableau est insuffisante.
+
+Et c’est là qu’interviennent les Slices dans Go, Ils vont nous permettre d’avoir un tableau flexible et le dimensionner de façon dynamique sans se soucier de sa taille pendant sa déclaration.
+
+Il existe deux façons pour créer une Slice.
+
+- Soit à partir de la même syntaxe qu'un tableau sauf que cette fois-ci on ne spécifie pas la taille du tableau :
+  var nombres = []int{0, 0, 0, 0, 0} // création d'une slice avec 5 éléments
+
+Pour rajouter un élément dans votre slice il faut utiliser la fonction append(), qui prend comme paramètres d'abord votre slice et ensuite l'élément que vous voulez rajouter et elle vous retournera une nouvelle Slice avec l'élément rajouté.
+
 # GORM
 
 GORM est une librairie externe.
@@ -120,6 +133,112 @@ ORM existe dans beaucoup de langages :
 - Java → Hibernate
 - Python → Django ORM / SQLAlchemy
 - PHP → Eloquent
+
+### Exemple
+
+type Sheet struct {
+SafeSheetName string `gorm:"primary_key" json:"safe_sheet_name"`
+SheetName string `json:"sheet_name"`
+SafeComposer string `json:"safe_composer"`
+Composer string `json:"composer"`
+ReleaseDate time.Time
+PdfUrl string `json:"pdf_url"`
+UploaderID uint32 `gorm:"not null" json:"uploader_id"`
+CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
+UpdatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
+Tags pq.StringArray `gorm:"type:text[]" json:"tags"` // C’est un champ PostgreSQL text[].
+Categories pq.StringArray `gorm:"type:text[]" json:"categories"`
+InformationText string `json:"information_text"`
+}
+
+Il faut bien distinguer deux couches orthogonales :
+
+- gorm:"..." → mapping base de données (ORM → schéma SQL)
+- json:"..." → mapping API HTTP (struct Go ↔ JSON)
+
+Ce sont deux tags totalement indépendants.
+
+1️⃣ gorm:"..." → contrat avec la base de données
+
+Le tag GORM influence :
+le type SQL généré
+les contraintes (PRIMARY KEY, NOT NULL, UNIQUE…)
+la taille (size:255)
+les valeurs par défaut
+les index
+le nom de colonne
+
+Exemples dans ta struct :
+
+SafeSheetName string `gorm:"primary_key" json:"safe_sheet_name"`
+UploaderID uint32 `gorm:"not null" json:"uploader_id"`
+Tags pq.StringArray `gorm:"type:text[]" json:"tags"`
+CreatedAt time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
+
+Ici GORM doit savoir :
+
+que SafeSheetName est la clé primaire
+
+que UploaderID ne peut pas être NULL
+
+que Tags est un text[] PostgreSQL
+
+que CreatedAt a une valeur par défaut SQL
+
+Sans ces tags, GORM utiliserait ses conventions par défaut.
+
+2️⃣ json:"..." → contrat avec ton API
+
+Le tag JSON sert uniquement pour :
+
+c.JSON(...)
+
+c.BindJSON(...)
+
+json.Marshal / json.Unmarshal
+
+Exemple :
+
+SheetName string `json:"sheet_name"`
+
+Cela signifie :
+
+côté API → la clé JSON sera sheet_name
+
+sans tag → ce serait SheetName
+
+Donc json concerne la sérialisation HTTP, pas la base.
+
+3️⃣ Pourquoi certains champs n’ont pas gorm ?
+
+Parce que :
+
+➜ GORM sait déjà quoi faire par convention
+
+Exemple :
+
+SheetName string `json:"sheet_name"`
+Composer string `json:"composer"`
+
+Par défaut GORM :
+
+type Go string → type SQL varchar(255) (selon driver)
+
+nom colonne → sheet_name (snake_case automatique)
+
+4️⃣ Pourquoi certains champs n’ont pas json ?
+
+Exemple :
+
+ReleaseDate time.Time
+
+Sans tag JSON :
+
+la clé sera ReleaseDate dans le JSON (camel case exact)
+
+pas release_date
+
+Donc si tu veux contrôler le contrat API, tu ajoutes json.
 
 ## Hooks
 
@@ -199,3 +318,97 @@ Un JWT comporte trois parties :
 ```
 HEADER.PAYLOAD.SIGNATURE
 ```
+
+# Différences entre Bind, ShouldBind, BindJSON et ShouldBindWith (Gin)
+
+Dans Gin, le binding permet de parser les données entrantes d’une requête HTTP (JSON, formulaire, multipart, etc.) vers une structure Go.
+
+1. ShouldBind
+   if err := c.ShouldBind(&obj); err != nil {
+   // gestion manuelle de l'erreur
+   }
+
+Fonctionnement
+
+Choisit automatiquement le binder en fonction du Content-Type.
+Ne modifie pas automatiquement la réponse HTTP.
+Retourne une erreur si le parsing échoue.
+Quand l’utiliser ?
+
+✅ Recommandé en production
+✅ Quand on veut contrôler la gestion des erreurs
+
+2. Bind
+   c.Bind(&obj)
+
+Fonctionnement
+
+Choisit automatiquement le binder selon Content-Type.
+En cas d’erreur :
+Écrit automatiquement un HTTP 400
+Stoppe le traitement du handler
+
+Inconvénient
+
+❌ Ne laisse pas le contrôle sur la réponse d’erreur.
+
+Quand l’utiliser ?
+
+Usage simple ou rapide, mais déconseillé en production.
+
+3. BindJSON / ShouldBindJSON
+   c.ShouldBindJSON(&obj)
+
+Fonctionnement
+
+Force l’utilisation du binder JSON.
+Ignore la détection automatique du Content-Type.
+Différence
+BindJSON → écrit automatiquement HTTP 400 en cas d’erreur.
+ShouldBindJSON → retourne l’erreur sans écrire la réponse.
+
+Quand l’utiliser ?
+
+✅ API REST pure JSON
+✅ Quand on veut forcer le parsing JSON
+
+4. ShouldBindWith
+   c.ShouldBindWith(&obj, binding.JSON)
+
+Fonctionnement
+
+Permet de choisir explicitement le binder.
+
+Ignore la détection automatique du Content-Type.
+
+Exemples
+c.ShouldBindWith(&obj, binding.JSON)
+c.ShouldBindWith(&obj, binding.Form)
+c.ShouldBindWith(&obj, binding.FormMultipart)
+
+Quand l’utiliser ?
+
+Cas avancés
+
+Quand le Content-Type ne peut pas être fiable
+
+Tests spécifiques
+
+Résumé
+Méthode Binder auto Gestion auto erreur Recommandé
+Bind Oui Oui (HTTP 400) ❌
+ShouldBind Oui Non ✅
+BindJSON Non (JSON) Oui (HTTP 400) ⚠️
+ShouldBindJSON Non (JSON) Non ✅
+ShouldBindWith Non (manuel) Non Avancé
+Recommandation
+
+En production, privilégier :
+
+ShouldBind
+
+ShouldBindJSON
+
+ShouldBindWith
+
+afin de garder le contrôle total sur la gestion des erreurs et les réponses HTTP.

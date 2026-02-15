@@ -2,6 +2,33 @@
 
 Permet de tester toutes les fonctions du backend
 
+# Content Type
+
+-H "Content-Type: application/json"
+
+-H dans curl signifie ajouter un header HTTP.
+Donc cette instruction ajoute l’en-tête :
+Content-Type: application/json
+Autrement dit : comment interpréter les données envoyées.
+
+url -X POST http://localhost:8080/api/login \
+ -H "Content-Type: application/json" \
+ -d '{"email":"test@mail.com","password":"1234"}'
+
+Ici :
+
+    -d envoie un body brut
+    Content-Type: application/json
+    Gin utilisera ShouldBindJSON() ou BindJSON()
+
+Le serveur va parser le body comme du JSON
+
+| Content-Type                        | Usage                   | Méthode Gin associée |
+| ----------------------------------- | ----------------------- | -------------------- |
+| `application/json`                  | API REST classique      | `ShouldBindJSON()`   |
+| `multipart/form-data`               | Upload fichier + champs | `ShouldBind()`       |
+| `application/x-www-form-urlencoded` | Form HTML simple        | `ShouldBind()`       |
+
 # Public
 
 | Méthode | URL        | Fonction     |
@@ -27,9 +54,10 @@ curl http://localhost:8080/api | jq
 | ------- | ------------ | -------- |
 | POST    | `/api/login` | login    |
 
-0. TOKEN=$(curl -s -X POST http://localhost:8080/api/login \
-   -H "Content-Type: application/json" \
-   -d '{"email":"admin@admin.com","password":"sheetflow"}' | tr -d '"')
+0. Login
+   TOKEN=$(curl -s -X POST http://localhost:8080/api/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"admin@admin.com","password":"sheetflow"}' | tr -d '"')
 
 echo "$TOKEN"
 
