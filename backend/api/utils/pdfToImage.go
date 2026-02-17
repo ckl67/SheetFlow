@@ -2,9 +2,9 @@ package utils
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
-	"fmt"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -20,7 +20,7 @@ import (
 func RequestToPdfToImage(path string, name string) bool {
 	fmt.Println("📄 PDF source:", path)
 	fmt.Println("🖼 Thumbnail name:", name)
-//	sendRequest(path, name, "https://pdf2png.sheetable.net/createthumbnail")
+	//	sendRequest(path, name, "https://pdf2png.sheetable.net/createthumbnail")
 	sendRequest(path, name, "http://localhost:5000/createthumbnail")
 	return true
 }
@@ -85,7 +85,6 @@ func sendRequest(pdfPath string, name string, remoteURL string) bool {
 	io.Copy(out, resp.Body)
 	return true
 }
-
 
 func Upload(client *http.Client, url string, values map[string]io.Reader, name string) (err error) {
 	// Prepare a form that you will submit to that URL.

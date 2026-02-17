@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"backend/api/config"
 	"backend/api/models"
 	"fmt"
 	"log"
@@ -9,17 +10,14 @@ import (
 	"path"
 	"time"
 
-	. "backend/api/config"
-
 	"github.com/gin-gonic/gin"
-
-	"github.com/jinzhu/gorm"
-	"github.com/rs/cors"
-
+	"github.com/glebarez/sqlite"
 	"github.com/gorilla/handlers"
-	_ "github.com/jinzhu/gorm/dialects/mysql"    // mysql database driver
-	_ "github.com/jinzhu/gorm/dialects/postgres" // postgres database driver
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/rs/cors"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type Server struct {
@@ -32,56 +30,81 @@ func (server *Server) Initialize(version string) {
 	var err error
 
 	server.Version = version
+	cfg := config.Config()
 
-	// Set Release Mode
-	if !Config().Dev {
+	DbDriver := cfg.Database.Driver
+	DbUser := cfg.Database.User
+	DbPassword := cfg.Database.Password
+	DbHost := cfg.Database.Host
+	DbPort := cfg.Database.Port
+	DbName := cfg.Database.Name
+
+	// Logger configuration
+	var gormLogger logger.Interface
+	if cfg.Dev {
+		log.Println("Running in DEV mode - SQL and GIN in logs enabled")
+		// logger.Info affiche les requêtes SQL avec les valeurs des paramètres, ce qui est utile pour le développement et le débogage.
+		gormLogger = logger.Default.LogMode(logger.Info)
+		// gin.DebugMode affiche les requêtes HTTP entrantes, les paramètres, les en-têtes, etc.,
+		// ce qui est également utile pour le développement et le débogage.
+		gin.SetMode(gin.DebugMode)
+		// Affichage de la configuration du serveur, y compris les secrets (à éviter en production)
+		cfg.LogSafe()
+
+	} else {
+		log.Println("Running in PRODUCTION mode")
+		// logger.Silent n'affiche aucune requête SQL, ce qui est recommandé en production pour éviter de divulguer des informations sensibles dans les logs.
+		gormLogger = logger.Default.LogMode(logger.Silent)
+
+		// gin.ReleaseMode désactive les logs de requêtes HTTP, ce qui est également recommandé en production pour éviter de divulguer des informations sensibles dans les logs.
 		gin.SetMode(gin.ReleaseMode)
-	}
 
-	DbDriver := Config().Database.Driver
-	DbUser := Config().Database.User
-	DbPassword := Config().Database.Password
-	DbHost := Config().Database.Host
-	DbPort := Config().Database.Port
-	DbName := Config().Database.Name
+	}
 
 	switch DbDriver {
+
 	case "mysql":
-		DBURL := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local", DbUser, DbPassword, DbHost, DbPort, DbName)
-		server.DB, err = gorm.Open(DbDriver, DBURL)
-		if err != nil {
-			log.Fatalf("error conencting to %s database: %s", DbDriver, err.Error())
-		} else {
-			fmt.Printf("Connected to %s database...\n", DbDriver)
-		}
+		dsn := fmt.Sprintf(
+			"%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+			DbUser, DbPassword, DbHost, DbPort, DbName,
+		)
+
+		server.DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+			Logger: gormLogger,
+		})
+
 	case "postgres":
-		DBURL := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable password=%s", DbHost, DbPort, DbUser, DbName, DbPassword)
-		server.DB, err = gorm.Open(DbDriver, DBURL)
-		if err != nil {
-			log.Fatalf("error conencting to %s database: %s", DbDriver, err.Error())
-		} else {
-			fmt.Printf("Connected to %s database...\n", DbDriver)
+		dsn := fmt.Sprintf(
+			"host=%s port=%d user=%s dbname=%s password=%s sslmode=disable",
+			DbHost, DbPort, DbUser, DbName, DbPassword,
+		)
+
+		server.DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+			Logger: gormLogger,
+		})
+
+	default: // sqlite
+		if _, err := os.Stat(cfg.ConfigPath); os.IsNotExist(err) {
+			_ = os.Mkdir(cfg.ConfigPath, os.ModePerm)
 		}
 
-	default:
-		if _, err := os.Stat(Config().ConfigPath); os.IsNotExist(err) {
-			_ = os.Mkdir(Config().ConfigPath, os.ModePerm)
-		}
+		dbPath := path.Join(cfg.ConfigPath, "database.db")
 
-		server.DB, err = gorm.Open("sqlite3", path.Join(Config().ConfigPath, "database.db"))
-
-		if err != nil {
-			log.Fatalf("error conencting to %s database: %s", DbDriver, err.Error())
-		} else {
-			fmt.Printf("Connected to %s database %s...\n", DbDriver, path.Join(Config().ConfigPath, "database.db"))
-		}
+		server.DB, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+			Logger: gormLogger,
+		})
 	}
 
-	// Silence the logger
-	server.DB.LogMode(false)
+	if err != nil {
+		log.Fatalf("database connection failed: %v", err)
+	}
 
-	// Migrate DBs
-	server.DB.AutoMigrate(&models.User{}, &models.Sheet{})
+	log.Println("Database connected successfully")
+
+	// ✅ Migration
+	if err := server.DB.AutoMigrate(&models.User{}, &models.Sheet{}); err != nil {
+		log.Fatalf("migration failed: %v", err)
+	}
 
 	server.SetupRouter()
 }

@@ -5,6 +5,7 @@ import (
 	//"path/filepath"
 
 	//"backend/"
+	"backend/api/config"
 	"backend/api/middlewares"
 
 	"github.com/gin-gonic/gin"
@@ -12,7 +13,17 @@ import (
 
 func (server *Server) SetupRouter() {
 	r := gin.New()
-	r.Use(gin.Recovery())
+
+	// charge la configuration du serveur à partir des variables d'environnement et du fichier .env
+	if config.Config().Dev {
+		// En développement, on utilise les middlewares de logging et de récupération par défaut de Gin
+		r.Use(gin.Logger())
+	} else {
+		// En production, on peut utiliser un middleware de logging plus léger ou personnalisé
+		r.Use(gin.LoggerWithWriter(gin.DefaultWriter, "/health", "/version"))
+		// En production, on peut également utiliser un middleware de récupération plus robuste
+		r.Use(gin.Recovery())
+	}
 
 	// Health check
 	r.GET("/health", func(c *gin.Context) {

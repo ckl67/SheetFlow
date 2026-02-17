@@ -16,16 +16,16 @@ import (
 )
 
 /*
-	This endpoint will return all composers in Page like style.
-	Meaning POST request will have 3 attributes:
-		- sort_by: (how is it sorted)
-		- page: (what page)
-		- limit: (limit number)
+This endpoint will return all composers in Page like style.
+Meaning POST request will have 3 attributes:
+  - sort_by: (how is it sorted)
+  - page: (what page)
+  - limit: (limit number)
 
-	Return:
-		- composers: [...]
-		- page_max: [7] // How many pages there are
-		- page_current: [1] // Which page is currently selected
+Return:
+  - composers: [...]
+  - page_max: [7] // How many pages there are
+  - page_current: [1] // Which page is currently selected
 */
 func (server *Server) GetComposersPage(c *gin.Context) {
 	var form forms.GetComposersPageRequest
@@ -50,12 +50,12 @@ func (server *Server) GetComposersPage(c *gin.Context) {
 }
 
 /*
-	Update a composer via PUT request
-	body - formdata
-	example:
-		- name: Chopin
-		- portrait_url: url
-		- epoch: romance
+Update a composer via PUT request
+body - formdata
+example:
+  - name: Chopin
+  - portrait_url: url
+  - epoch: romance
 */
 func (server *Server) UpdateComposer(c *gin.Context) {
 	composerName := c.Param("composerName")
@@ -112,9 +112,10 @@ func (server *Server) DeleteComposer(c *gin.Context) {
 }
 
 /*
-	Serve the Composer Portraits
-	Example request:
-		GET /composer/portrait/Chopin
+Serve the Composer Portraits
+Example request:
+
+	GET /composer/portrait/Chopin
 */
 func (server *Server) ServePortraits(c *gin.Context) {
 	name := c.Param("composerName")
@@ -123,8 +124,8 @@ func (server *Server) ServePortraits(c *gin.Context) {
 }
 
 /*
-	Upload a portrait
-	! Currently only PNG files supported
+Upload a portrait
+! Currently only PNG files supported
 */
 func uploadPortait(form forms.UpdateComposersRequest, compName string, originalName string) bool {
 

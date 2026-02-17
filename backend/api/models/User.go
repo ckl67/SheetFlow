@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/badoux/checkmail"
-	"github.com/jinzhu/gorm"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 // gorm:"size:10" sert à GORM pour créer la colonne correspondante en base de données
@@ -52,7 +52,17 @@ func VerifyPassword(hashedPassword, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
-func (u *User) BeforeSave() error {
+// Hook
+// En GORM V1
+// func (u *User) BeforeSave() error {
+//
+// En GORM v2, la signature doit être exactement :
+// func (u *User) BeforeSave(tx *gorm.DB) error {
+// ✔ pointeur
+// ✔ paramètre *gorm.DB
+// ✔ retourne error
+
+func (u *User) BeforeSave(tx *gorm.DB) error {
 	hashedPassword, err := Hash(u.Password)
 	if err != nil {
 		return err
@@ -150,7 +160,7 @@ func (u *User) FindUserByID(db *gorm.DB, uid uint32) (*User, error) {
 	if err != nil {
 		return &User{}, err
 	}
-	if gorm.IsRecordNotFoundError(err) {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return &User{}, errors.New("User Not Found")
 	}
 	return u, err
@@ -174,7 +184,7 @@ func (u *User) FindUserByEmail(db *gorm.DB, email string) (*User, error) {
 
 	// Cette ligne est censée vérifier si l'erreur était "record not found"
 	// Mais ici elle ne sert à rien car on renvoie déjà err juste avant si err != nil
-	if gorm.IsRecordNotFoundError(err) {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return &User{}, errors.New("User Not Found")
 	}
 
@@ -190,7 +200,7 @@ func (u *User) GetUserRoleByEmail(db *gorm.DB, email string) (uint8, error) {
 	err := db.Model(User{}).Where("email = ?", email).Take(&user).Error
 	// Si une erreur survient
 	if err != nil {
-		if gorm.IsRecordNotFoundError(err) { // aucun utilisateur trouvé
+		if errors.Is(err, gorm.ErrRecordNotFound) { // aucun utilisateur trouvé
 			return 0, errors.New("User not found")
 		}
 		return 0, err // autre erreur (DB etc.)
@@ -207,7 +217,7 @@ func (u *User) SetUserRoleByEmail(db *gorm.DB, email string, role uint8) error {
 	// Recherche de l'utilisateur par email
 	err := db.Model(User{}).Where("email = ?", email).Take(&user).Error
 	if err != nil {
-		if gorm.IsRecordNotFoundError(err) { // aucun utilisateur trouvé
+		if errors.Is(err, gorm.ErrRecordNotFound) { // aucun utilisateur trouvé
 			return errors.New("User not found")
 		}
 		return err
@@ -246,7 +256,7 @@ func (u *User) FindUserByPasswordResetId(db *gorm.DB, passwordResetId string) (*
 	if err != nil {
 		return &User{}, err
 	}
-	if gorm.IsRecordNotFoundError(err) {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return &User{}, errors.New("User Not Found")
 	}
 	return u, err
@@ -255,7 +265,7 @@ func (u *User) FindUserByPasswordResetId(db *gorm.DB, passwordResetId string) (*
 func (u *User) UpdateAUserAndRole(db *gorm.DB, uid uint32) (*User, error) {
 	// To hash the password
 	// Car Avec UpdateColumns() GORM bypass les hooks.
-	err := u.BeforeSave()
+	err := u.BeforeSave(db)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -286,7 +296,7 @@ func (u *User) UpdateAUserAndRole(db *gorm.DB, uid uint32) (*User, error) {
 func (u *User) UpdateAUser(db *gorm.DB, uid uint32) (*User, error) {
 	// To hash the password
 	// Car Avec UpdateColumns() GORM bypass les hooks.
-	err := u.BeforeSave()
+	err := u.BeforeSave(db)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -326,7 +336,7 @@ func RequestPasswordReset(db *gorm.DB, email string) (string, error) {
 	user := User{}
 	// On charge user sur basd email
 	_, err := user.FindUserByEmail(db, email)
-	if gorm.IsRecordNotFoundError(err) {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return "", errors.New("Email doesn't exist in the server.")
 	}
 
@@ -349,7 +359,7 @@ func RequestPasswordReset(db *gorm.DB, email string) (string, error) {
 func ResetPassword(db *gorm.DB, passwordResetId string, updatedPassword string) (*User, error, int) {
 	user := User{}
 	_, err := user.FindUserByPasswordResetId(db, passwordResetId)
-	if gorm.IsRecordNotFoundError(err) {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return &User{}, errors.New("This passwordResetId is invalid."), http.StatusNotFound
 	}
 	if user.PasswordResetExpire.Before(time.Now()) {
@@ -358,7 +368,7 @@ func ResetPassword(db *gorm.DB, passwordResetId string, updatedPassword string) 
 
 	user.Password = updatedPassword
 
-	user.BeforeSave() /* This will hash the password */
+	user.BeforeSave(db) /* This will hash the password */
 
 	db = db.Model(&User{}).Where("password_reset = ?", passwordResetId).Take(&User{}).UpdateColumns(
 		map[string]interface{}{

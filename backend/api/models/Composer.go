@@ -1,6 +1,7 @@
 package models
 
 import (
+	"backend/api/config"
 	"errors"
 	"fmt"
 	"os"
@@ -9,9 +10,8 @@ import (
 	"strings"
 	"time"
 
-	. "backend/api/config"
+	"gorm.io/gorm"
 
-	"github.com/jinzhu/gorm"
 	"github.com/kennygrant/sanitize"
 )
 
@@ -42,10 +42,9 @@ func (c *Composer) SaveComposer(db *gorm.DB) (*Composer, error) {
 }
 
 func (c *Composer) UpdateComposer(db *gorm.DB, originalName string, updatedName string, portraitUrl string, epoch string, uploadSuccess bool) (*Composer, error) {
-
 	composer, err := c.FindComposerBySafeName(db, originalName)
 	if err != nil {
-		if gorm.IsRecordNotFoundError(err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return &Composer{}, errors.New("Composer not found")
 		}
 		return &Composer{}, err
@@ -76,17 +75,16 @@ func (c *Composer) UpdateComposer(db *gorm.DB, originalName string, updatedName 
 	db.Model(&Sheet{}).Where("safe_composer = ?", originalName).Update("safe_composer", sanitize.Name(updatedName))
 	db.Model(&Sheet{}).Where("safe_composer = ?", sanitize.Name(updatedName)).Update("composer", updatedName)
 	// Rename folder
-	p := path.Join(Config().ConfigPath, "sheets/uploaded-sheets/")
+	p := path.Join(config.Config().ConfigPath, "sheets/uploaded-sheets/")
 	os.Rename(p+"/"+originalName, p+"/"+sanitize.Name(updatedName))
 
 	return composer, nil
 }
 
 func (c *Composer) DeleteComposer(db *gorm.DB, composerName string) (int64, error) {
-
 	_, err := c.FindComposerBySafeName(db, composerName)
 	if err != nil {
-		if gorm.IsRecordNotFoundError(err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return 0, errors.New("composer not found")
 		}
 		return 0, err
@@ -99,7 +97,7 @@ func (c *Composer) DeleteComposer(db *gorm.DB, composerName string) (int64, erro
 	db = db.Model(&Composer{}).Where("safe_name = ?", composerName).Take(&Composer{}).Delete(&Composer{})
 
 	if db.Error != nil {
-		if gorm.IsRecordNotFoundError(db.Error) {
+		if errors.Is(db.Error, gorm.ErrRecordNotFound) {
 			return 0, errors.New("composer not found")
 		}
 		return 0, db.Error
@@ -110,7 +108,7 @@ func (c *Composer) DeleteComposer(db *gorm.DB, composerName string) (int64, erro
 	db.Exec("UPDATE 'sheets' SET 'safe_composer' = 'unknown' WHERE (composer = ?);", "Unknown")
 	db.Exec("UPDATE sheets s JOIN (SELECT id, pdf_url, LOCATE(?, pdf_url) AS pos FROM sheets WHERE safe_composer = ? LIMIT 1) t ON s.id = t.id SET s.pdf_url = CONCAT(SUBSTRING(s.pdf_url, 1, t.pos - 1), 'unknown', SUBSTRING(s.pdf_url, t.pos + CHAR_LENGTH(?)))", composerName, composerName, composerName)
 
-	confPath := path.Join(Config().ConfigPath, "sheets/uploaded-sheets/")
+	confPath := path.Join(config.Config().ConfigPath, "sheets/uploaded-sheets/")
 
 	// Move all files inside comp direcotry
 	filepath.Walk(confPath+"/"+composerName,
@@ -155,7 +153,6 @@ func (c *Composer) ProperComposerCheck(db *gorm.DB, composerName string) {
 }
 
 func (c *Composer) CreateUnknownComposer(db *gorm.DB) {
-
 	_, err := c.FindComposerBySafeName(db, "unknown")
 	// Unknown doesn't exist yet
 	if err != nil {
@@ -166,16 +163,14 @@ func (c *Composer) CreateUnknownComposer(db *gorm.DB) {
 		c.SaveComposer(db)
 
 		// Create a folder/directory at a full qualified path
-		err := os.Mkdir(path.Join(Config().ConfigPath, "sheets/uploaded-sheets/unknown"), 0755)
+		err := os.Mkdir(path.Join(config.Config().ConfigPath, "sheets/uploaded-sheets/unknown"), 0755)
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
-
 }
 
 func (c *Composer) FindComposerBySafeName(db *gorm.DB, composerName string) (*Composer, error) {
-
 	// Get information of one single composer
 	var err error
 	err = db.Model(&Composer{}).Where("safe_name = ?", composerName).Take(&c).Error
@@ -194,7 +189,6 @@ func (c *Composer) GetAllComposer(db *gorm.DB) (*[]Composer, error) {
 	composers := []Composer{}
 
 	err = db.Order("updated_at desc").Limit(20).Find(&composers).Error
-
 	if err != nil {
 		return &[]Composer{}, err
 	}
@@ -202,7 +196,6 @@ func (c *Composer) GetAllComposer(db *gorm.DB) (*[]Composer, error) {
 }
 
 func SearchComposer(db *gorm.DB, searchValue string) []*Composer {
-
 	// Search for sheets with containing string
 	var composers []*Composer
 	searchValue = "%" + searchValue + "%"
@@ -211,7 +204,6 @@ func SearchComposer(db *gorm.DB, searchValue string) []*Composer {
 }
 
 func (c *Composer) List(db *gorm.DB, pagination Pagination) (*Pagination, error) {
-
 	// For pagination
 	var composers []*Composer
 	db.Scopes(paginate(composers, &pagination, db)).Find(&composers)

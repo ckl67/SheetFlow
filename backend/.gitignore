@@ -9,7 +9,7 @@
 /config/
 
 # Exceptions pour certains fichiers
-api/config/config.go
+!api/config/config.go
 
 # Autres dossiers
 build/

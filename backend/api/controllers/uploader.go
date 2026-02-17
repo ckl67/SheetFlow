@@ -24,7 +24,6 @@ import (
 
 	. "github.com/fiam/gounidecode/unidecode"
 	"github.com/gin-gonic/gin"
-	"github.com/lib/pq"
 
 	. "backend/api/config"
 
@@ -219,69 +218,49 @@ func createFile(
 	categories string,
 	tags string,
 ) error {
-	// Create database entry
+	safeComposer := sanitize.Name(Unidecode(strings.TrimSpace(comp.CompleteName)))
+	safeSheetName := sanitize.Name(Unidecode(strings.TrimSpace(sheetName)))
+
+	// parser tags et categories en slice
+	tagSlice := parseSemicolonList(tags)
+	categorySlice := parseSemicolonList(categories)
+
+	// encoder en JSON
+	tagJSON, _ := json.Marshal(tagSlice)
+	categoryJSON, _ := json.Marshal(categorySlice)
+
 	sheet := models.Sheet{
-		SafeSheetName:   sanitize.Name(Unidecode(strings.TrimSpace(sheetName))),
+		SafeSheetName:   safeSheetName,
 		SheetName:       strings.TrimSpace(sheetName),
-		SafeComposer:    sanitize.Name(Unidecode(strings.TrimSpace(comp.CompleteName))),
+		SafeComposer:    safeComposer,
 		Composer:        strings.TrimSpace(comp.CompleteName),
 		UploaderID:      uid,
 		ReleaseDate:     createDate(releaseDate),
 		InformationText: informationText,
-		Categories:      parseSemicolonList(categories),
-		Tags:            parseSemicolonList(tags),
-		PdfUrl:          "sheet/pdf/" + sanitize.Name(Unidecode(comp.CompleteName)) + "/" + sanitize.Name(Unidecode(sheetName)),
+		Tags:            string(tagJSON),
+		Categories:      string(categoryJSON),
+		PdfUrl:          "sheet/pdf/" + safeComposer + "/" + safeSheetName,
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
 	}
 
-	_, err := sheet.SaveSheet(server.DB)
-	if err != nil {
+	if err := server.DB.Create(&sheet).Error; err != nil {
 		return err
 	}
 
-	err = utils.OsCreateFile(fullpath, file)
-	if err != nil {
-		return err
-	}
-	return nil
+	return utils.OsCreateFile(fullpath, file)
 }
 
 // Parser proprement catégories et tags
-// On split la string reçue du front en utilisant le ; comme séparateur,
-// puis on trim les espaces et on vérifie que ce n'est pas une string vide avant de l'ajouter à notre pq.StringArray.
-// Par exemple, si le front envoie "Classical; Romantic; Baroque" pour les catégories,
-// cette fonction va retourner un pq.StringArray contenant ["Classical", "Romantic", "Baroque"].
-// Si le front envoie une string vide pour les tags, cette fonction va retourner
-// un pq.StringArray vide, ce qui est géré correctement dans la base de données
-// grâce à l'initialisation dans la méthode Prepare() du modèle Sheet.
-//
-// Ceci à cause de la différence importante :
-// var a pq.StringArray        // nil
-// b := pq.StringArray{}       // slice vide
-// En JSON, a sera null, tandis que b sera [].
-// En PostgreSQL, les deux seront traités comme des tableaux vides,
-// mais il est préférable d'initialiser à une slice vide pour éviter les problèmes de nullabilité dans le code Go.
-//| Valeur | État Go        | JSON | PostgreSQL |
-//| ------ | -------------- | ---- | ---------- |
-//| nil    | non initialisé | null | NULL       |
-//| {}     | slice vide     | []   | {}         |
-
-func parseSemicolonList(input string) pq.StringArray {
-	// avec var result pq.StringArray
-	// 👉 result est nil, pas un slice vide.
-	// Donc si input == "", tu retournes nil.
-	// 	Donc aujourd’hui :
-	// Si l’utilisateur ne met rien → Categories = NULL
-	// Si l’utilisateur met "" → NULL
-	// Si l’utilisateur met " " → aussi NULL
-
-	result := pq.StringArray{} // ← slice vide garanti
-
+// On split la string reçue par le frontend en utilisant le point-virgule comme séparateur, puis on trim les espaces autour de chaque
+// catégorie/tag et on ignore les entrées vides.
+// Par exemple, si le frontend envoie "Classical; Piano; ; Romantic", la fonction retournera
+// []string{"Classical", "Piano", "Romantic"}.
+func parseSemicolonList(input string) []string {
+	var result []string
 	if strings.TrimSpace(input) == "" {
 		return result
 	}
-
 	parts := strings.Split(input, ";")
 	for _, p := range parts {
 		clean := strings.TrimSpace(p)
@@ -289,7 +268,6 @@ func parseSemicolonList(input string) pq.StringArray {
 			result = append(result, clean)
 		}
 	}
-
 	return result
 }
 

@@ -1,32 +1,33 @@
 package controllers
 
 import (
+	"backend/api/auth"
+	"backend/api/forms"
+	"backend/api/models"
+	"backend/api/utils"
 	"errors"
 	"fmt"
 	"net/http"
 	"path"
 
-	"backend/api/auth"
 	. "backend/api/config"
-	"backend/api/forms"
-	"backend/api/models"
-	"backend/api/utils"
+
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 /*
-	This endpoint will return all sheets in Page like style.
-	Meaning POST request will have 3 attributes:
-		- sort_by: (how is it sorted)
-		- page: (what page)
-		- limit: (limit number)
-		- composer: (what composer)
+This endpoint will return all sheets in Page like style.
+Meaning POST request will have 3 attributes:
+  - sort_by: (how is it sorted)
+  - page: (what page)
+  - limit: (limit number)
+  - composer: (what composer)
 
-	Return:
-		- sheets: [...]
-		- page_max: [7] // How many pages there are
-		- page_current: [1] // Which page is currently selected
+Return:
+  - sheets: [...]
+  - page_max: [7] // How many pages there are
+  - page_current: [1] // Which page is currently selected
 */
 func (server *Server) GetSheetsPage(c *gin.Context) {
 	var form forms.GetSheetsPageRequest
@@ -51,10 +52,12 @@ func (server *Server) GetSheetsPage(c *gin.Context) {
 }
 
 /*
-	Get PDF file and information about an individual sheet.
-	Example request:
-		GET /sheet/Étude N. 1
-	Has to be safeName
+Get PDF file and information about an individual sheet.
+Example request:
+
+	GET /sheet/Étude N. 1
+
+Has to be safeName
 */
 func (server *Server) GetSheet(c *gin.Context) {
 	sheetName := c.Param("sheetName")
@@ -73,10 +76,12 @@ func (server *Server) GetSheet(c *gin.Context) {
 }
 
 /*
-	Serve the PDF file
-	Example request:
-		GET /sheet/pdf/Frédéric Chopin/Étude N. 1
-	sheetname and composer name have to be the safeName of them
+Serve the PDF file
+Example request:
+
+	GET /sheet/pdf/Frédéric Chopin/Étude N. 1
+
+sheetname and composer name have to be the safeName of them
 */
 func (server *Server) GetPDF(c *gin.Context) {
 	sheetName := c.Param("sheetName") + ".pdf"
@@ -86,15 +91,14 @@ func (server *Server) GetPDF(c *gin.Context) {
 }
 
 /*
-	Serve the thumbnail file
-	name = safename of sheet
+Serve the thumbnail file
+name = safename of sheet
 */
 func (server *Server) GetThumbnail(c *gin.Context) {
 	name := c.Param("name") + ".png"
 	filePath := path.Join(Config().ConfigPath, "sheets/thumbnails", name)
 	c.File(filePath)
 }
-
 
 // Has to be safeName of the sheet
 func (server *Server) DeleteSheet(c *gin.Context) {
@@ -143,15 +147,34 @@ func (server *Server) DeleteTag(c *gin.Context) {
 		return
 	}
 
-	tagNotFound := sheet.DelteTag(server.DB, updateTagForm.TagValue)
-	if !tagNotFound {
-		utils.DoError(c, http.StatusNotFound, fmt.Errorf("unable to find tag: %s", updateTagForm.TagValue))
+	// Nouvelle gestion d’erreur
+	if err := sheet.DeleteTag(server.DB, updateTagForm.TagValue); err != nil {
+
+		// Erreur métier (tag vide par exemple)
+		if errors.Is(err, models.ErrEmptyTag) {
+			utils.DoError(c, http.StatusBadRequest, err)
+			return
+		}
+
+		// Erreur métier (tag non trouvé)
+		if errors.Is(err, models.ErrTagNotFound) {
+			utils.DoError(c, http.StatusNotFound, err)
+			return
+		}
+
+		// Erreur base de données ou JSON
+		utils.DoError(c, http.StatusInternalServerError, err)
 		return
+
 	}
 
-	c.JSON(http.StatusOK, "Tag: ["+updateTagForm.TagValue+"] was successfully deleted")
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Tag deleted successfully",
+	})
 }
 
+// Ajouter une route pour mettre à jour le Tag d'une feuille de musique
+// Exemple de requête :
 func (server *Server) AppendTag(c *gin.Context) {
 	/*
 		This endpoint will append a new Tag
@@ -161,6 +184,7 @@ func (server *Server) AppendTag(c *gin.Context) {
 			- tagValue: New Tag
 	*/
 
+	// récupérer la feuille de musique à partir du nom de la feuille de musique dans l'URL
 	sheet := getSheet(server.DB, c)
 	if sheet == nil {
 		return
@@ -176,13 +200,24 @@ func (server *Server) AppendTag(c *gin.Context) {
 		return
 	}
 
-	sheet.AppendTag(server.DB, tagForm.TagValue)
+	// gestion d’erreur ici
+	if err := sheet.AppendTag(server.DB, tagForm.TagValue); err != nil {
+
+		// Erreur métier (tag vide par exemple)
+		if errors.Is(err, models.ErrEmptyTag) {
+			utils.DoError(c, http.StatusBadRequest, err)
+			return
+		}
+
+		// Erreur base de données ou JSON
+		utils.DoError(c, http.StatusInternalServerError, err)
+		return
+	}
 
 	c.JSON(http.StatusOK, "Tag: ["+tagForm.TagValue+"] was successfully appended")
 }
 
 func (server *Server) FindSheetsByTag(c *gin.Context) {
-
 	var tagForm forms.TagRequest
 	if err := c.ShouldBind(&tagForm); err != nil {
 		utils.DoError(c, http.StatusBadRequest, fmt.Errorf("bad upload request: %v", err))
@@ -193,10 +228,20 @@ func (server *Server) FindSheetsByTag(c *gin.Context) {
 		return
 	}
 
-	sheets := models.FindSheetByTag(server.DB, tagForm.TagValue)
+	sheets, err := models.FindSheetByTag(server.DB, tagForm.TagValue)
+	if err != nil {
+
+		// Erreur métier (tag vide par exemple)
+		if errors.Is(err, models.ErrEmptyTag) {
+			utils.DoError(c, http.StatusBadRequest, err)
+		} else {
+			// Erreur base de données ou JSON
+			utils.DoError(c, http.StatusInternalServerError, err)
+		}
+		return
+	}
 
 	c.JSON(http.StatusOK, sheets)
-
 }
 
 func (server *Server) UpdateSheetInformationText(c *gin.Context) {
@@ -229,7 +274,6 @@ func (server *Server) UpdateSheetInformationText(c *gin.Context) {
 }
 
 func getSheet(db *gorm.DB, c *gin.Context) *models.Sheet {
-
 	// Find a sheet by its name
 	sheetName := c.Param("sheetName")
 	if sheetName == "" {

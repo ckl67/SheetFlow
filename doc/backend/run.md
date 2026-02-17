@@ -8,8 +8,22 @@ Les mots de passe d'application ne s'utilisent pas avec Authenticator.
 
 Utilisez la barre de recherche en haut de votre compte Google et tapez directement "Mots de passe d'application".
 
-export SMTP_PASSWORD="ton_mot_de_passe_application_gmail"
+export SMTP_PASSWORD="mot_de_passe_application_gmail"
+
+## Fichier environnement
+
+.env
+
+à la racine du backend.
+Et y mettre uniquement ce dont tu as besoin.
+
+Exemple minimal pour ton cas :
+
+DB_DRIVER=sqlite
+PORT=7373
+DEV=1
 
 # Run
 
-go run main.go
+make run
+make build

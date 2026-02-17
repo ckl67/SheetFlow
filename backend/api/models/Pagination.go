@@ -3,7 +3,7 @@ package models
 import (
 	"math"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 type Pagination struct {
