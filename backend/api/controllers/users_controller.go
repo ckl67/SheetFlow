@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"backend/api/auth"
+	"backend/api/config"
 	"backend/api/forms"
 	"backend/api/models"
 	"backend/api/utils"
@@ -12,21 +13,19 @@ import (
 	"strconv"
 	"time"
 
-	. "backend/api/config"
-
 	"github.com/gin-gonic/gin"
 )
 
 func (server *Server) CreateUser(c *gin.Context) {
 	// Check for authentication
 	token := utils.ExtractToken(c)
-	uid, err := auth.ExtractTokenID(token, Config().ApiSecret)
+	uid, err := auth.ExtractTokenID(token, config.Config().ApiSecret)
 	if err != nil {
 		c.String(http.StatusUnauthorized, "Unauthorized")
 		return
 	}
 
-	if uid != ADMIN_UID {
+	if uid != config.ADMIN_UID {
 		c.String(http.StatusUnauthorized, "only Admins are able to persue this command")
 		return
 	}
@@ -39,14 +38,13 @@ func (server *Server) CreateUser(c *gin.Context) {
 	}
 
 	user.PrepareForCreate()
-	err = user.Validate("")
 	if err != nil {
 		c.String(http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 	// Dans SaveUser() un Hoock va appeler BeforeSave()
 	log.Printf("User struct: %+v\n", user)
-	userCreated, err := user.SaveUser(server.DB)
+	userCreated, err := user.Save(server.DB)
 	if err != nil {
 		// log.Println("RAW ERROR:", err.Error())
 		formattedError := formaterror.FormatError(err.Error())
@@ -60,19 +58,17 @@ func (server *Server) CreateUser(c *gin.Context) {
 func (server *Server) GetUsers(c *gin.Context) {
 	// Check for authentication
 	token := utils.ExtractToken(c)
-	uid, err := auth.ExtractTokenID(token, Config().ApiSecret)
+	uid, err := auth.ExtractTokenID(token, config.Config().ApiSecret)
 	if err != nil {
 		c.String(http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	if uid != ADMIN_UID {
+	if uid != config.ADMIN_UID {
 		c.String(http.StatusUnauthorized, "Only admins are able to persue this command")
 		return
 	}
 
-	user := models.User{}
-
-	users, err := user.FindAllUsers(server.DB)
+	users, err := models.GetAllUsers(server.DB)
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
@@ -89,7 +85,7 @@ func (server *Server) GetUser(c *gin.Context) {
 	}
 
 	token := utils.ExtractToken(c)
-	userId, err := auth.ExtractTokenID(token, Config().ApiSecret)
+	userId, err := auth.ExtractTokenID(token, config.Config().ApiSecret)
 	if err != nil {
 		c.String(http.StatusUnauthorized, "Unauthorized")
 		return
@@ -104,14 +100,14 @@ func (server *Server) GetUser(c *gin.Context) {
 	}
 
 	// Check for admin
-	if uid != 0 && userId != ADMIN_UID {
+	if uid != 0 && userId != config.ADMIN_UID {
 		c.String(http.StatusUnauthorized, "Only admins are able to look at user that aren't themselves. Try the endpoint /users/0 to look at your own user details")
 		return
 	}
 
 	uid = uint64(newUid)
 	user := models.User{}
-	userGotten, err := user.FindUserByID(server.DB, uint32(uid))
+	userGotten, err := user.FindByID(server.DB, uint32(uid))
 	if err != nil {
 		c.String(http.StatusBadRequest, err.Error())
 		return
@@ -158,19 +154,19 @@ func (server *Server) UpdateUser(c *gin.Context) {
 	}
 
 	token := utils.ExtractToken(c)
-	tokenID, err := auth.ExtractTokenID(token, Config().ApiSecret)
+	tokenID, err := auth.ExtractTokenID(token, config.Config().ApiSecret)
 	if err != nil {
 		c.String(http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	if tokenID != uint32(uid) && tokenID != ADMIN_UID {
+	if tokenID != uint32(uid) && tokenID != config.ADMIN_UID {
 		c.String(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
 		return
 	}
 
 	user.PrepareForUpdate()
-	err = user.Validate("update")
-	if err != nil {
+
+	if err := utils.ValidateStruct(user); err != nil {
 		c.String(http.StatusUnprocessableEntity, err.Error())
 		return
 	}
@@ -178,10 +174,10 @@ func (server *Server) UpdateUser(c *gin.Context) {
 	var updatedUser *models.User
 	log.Println("Updating user with ID:", uid, "by user with ID:", tokenID)
 
-	if tokenID == ADMIN_UID {
-		updatedUser, err = user.UpdateAUserAndRole(server.DB, uint32(uid))
+	if tokenID == config.ADMIN_UID {
+		updatedUser, err = user.Update(server.DB, uint32(uid), tokenID)
 	} else {
-		updatedUser, err = user.UpdateAUser(server.DB, uint32(uid))
+		updatedUser, err = user.Update(server.DB, uint32(uid), tokenID)
 	}
 
 	if err != nil {
@@ -202,7 +198,7 @@ func (server *Server) DeleteUser(c *gin.Context) {
 	}
 
 	token := utils.ExtractToken(c)
-	tokenID, err := auth.ExtractTokenID(token, Config().ApiSecret)
+	tokenID, err := auth.ExtractTokenID(token, config.Config().ApiSecret)
 	if err != nil {
 		c.String(http.StatusUnauthorized, "Unauthorized")
 		return
@@ -228,7 +224,7 @@ func (server *Server) ResetPassword(c *gin.Context) {
 		utils.DoError(c, http.StatusBadRequest, err)
 		return
 	}
-	if err := form.ValidateForm(); err != nil {
+	if err := utils.ValidateStruct(form); err != nil {
 		utils.DoError(c, http.StatusBadRequest, err)
 		return
 	}
@@ -244,24 +240,46 @@ func (server *Server) ResetPassword(c *gin.Context) {
 
 func (server *Server) RequestPasswordReset(c *gin.Context) {
 	var form forms.RequestResetPasswordRequest
+
 	if err := c.ShouldBind(&form); err != nil {
 		utils.DoError(c, http.StatusBadRequest, err)
 		return
 	}
-	if err := form.ValidateForm(); err != nil {
+
+	if err := utils.ValidateStruct(form); err != nil {
 		utils.DoError(c, http.StatusBadRequest, err)
 		return
 	}
 
-	resetPasswordId, err := models.RequestPasswordReset(server.DB, form.Email)
+	resetToken, err := models.RequestPasswordReset(server.DB, form.Email)
 	if err != nil {
-		c.JSON(http.StatusNotFound, err.Error())
+		// ⚠️ On ne révèle pas si l'email existe
+		c.JSON(http.StatusOK, "If the email exists, a reset link has been sent.")
 		return
 	}
-	if Config().Smtp.Enabled == "0" {
-		c.JSON(http.StatusBadGateway, "SMTP backend not configured. Go take a look at the docs to get started with emails.")
+
+	cfg := config.Config().Smtp
+	if cfg.Enabled != "true" {
+		c.JSON(http.StatusBadGateway, "SMTP backend not configured.")
 		return
 	}
-	utils.SendPasswordResetEmail(resetPasswordId, form.Email)
-	c.JSON(http.StatusOK, "Sent email successfully")
+
+	err = utils.SendMail(
+		form.Email,
+		"Password Reset",
+		buildResetBody(resetToken),
+	)
+	if err != nil {
+		utils.DoError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, "If the email exists, a reset link has been sent.")
+}
+
+func buildResetBody(token string) string {
+	return fmt.Sprintf(
+		"Click the link below to reset your password:\n\nhttps://yourdomain.com/reset?token=%s",
+		token,
+	)
 }

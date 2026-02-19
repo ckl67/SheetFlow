@@ -1,6 +1,10 @@
 package forms
 
-import "mime/multipart"
+import (
+	"errors"
+	"mime/multipart"
+	"strings"
+)
 
 // Structure qui sera uilisée par dans la fonction UploadFile() à travers c.ShouldBind(&uploadForm);
 // ShouldBind :
@@ -46,7 +50,36 @@ type UploadRequest struct {
 }
 
 // Currently a no-op but enables us to add any custom form validation in without having to change any calling code.
-
+// ValidateForm() est une méthode de la struct UploadRequest qui est actuellement un no-op (ne fait rien).
+// Cependant, elle est définie pour permettre l'ajout de toute validation personnalisée du formulaire à l'avenir sans avoir à modifier le code qui appelle cette méthode.
+// Par exemple, si tu veux ajouter une validation pour vérifier que le champ SheetName n'est pas vide, tu pourrais implémenter ValidateForm() comme ceci :
+//
+//	func (req *UploadRequest) ValidateForm() error {
+//	    if strings.TrimSpace(req.SheetName) == "" {
+//	        return errors.New("SheetName is required")
+//	    }
+//	    return nil
+//	}
 func (req *UploadRequest) ValidateForm() error {
+	if req.File == nil {
+		return errors.New("file is required")
+	}
+
+	if strings.TrimSpace(req.Composer) == "" {
+		return errors.New("composer is required")
+	}
+
+	if strings.TrimSpace(req.SheetName) == "" {
+		return errors.New("sheet name is required")
+	}
+
+	if req.File.Size > 10<<20 { // 10MB
+		return errors.New("file too large")
+	}
+
+	if !strings.HasSuffix(strings.ToLower(req.File.Filename), ".pdf") {
+		return errors.New("only PDF files are allowed")
+	}
+
 	return nil
 }

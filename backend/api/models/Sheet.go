@@ -1,6 +1,7 @@
 package models
 
 import (
+	"backend/api/config"
 	"encoding/json"
 	"errors"
 	"log"
@@ -8,8 +9,6 @@ import (
 	"path"
 	"strings"
 	"time"
-
-	. "backend/api/config"
 
 	"gorm.io/gorm"
 )
@@ -70,8 +69,8 @@ func (s *Sheet) DeleteSheet(db *gorm.DB, sheetName string) (int64, error) {
 	}
 
 	paths := []string{
-		path.Join(Config().ConfigPath, "sheets/uploaded-sheets", sheet.SafeComposer, sheet.SafeSheetName+".pdf"),
-		path.Join(Config().ConfigPath, "sheets/thumbnails", sheet.SafeSheetName+".png"),
+		path.Join(config.Config().ConfigPath, "sheets/uploaded-sheets", sheet.SafeComposer, sheet.SafeSheetName+".pdf"),
+		path.Join(config.Config().ConfigPath, "sheets/thumbnails", sheet.SafeSheetName+".png"),
 	}
 
 	for _, filePath := range paths {

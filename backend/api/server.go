@@ -1,11 +1,10 @@
 package api
 
 import (
+	"backend/api/config"
 	"backend/api/controllers"
 	"backend/api/seed"
 	"fmt"
-
-	. "backend/api/config"
 )
 
 var server = controllers.Server{}
@@ -20,14 +19,14 @@ func Run(version string) {
 	// La fonction seed.Load() est définie dans seeder.go
 	// Elle effectue une migration automatique des tables User, Sheet et Composer,
 	// puis crée un utilisateur administrateur avec les informations fournies (email et mot de passe) dans la configuration.
-	seed.Load(server.DB, Config().AdminEmail, Config().AdminPassword)
+	seed.Load(server.DB, config.Config().AdminEmail, config.Config().AdminPassword)
 
 	port := 8080
-	if Config().Port != 0 {
-		port = Config().Port
+	if config.Config().Port != 0 {
+		port = config.Config().Port
 	}
 
-	server.Run(fmt.Sprintf("0.0.0.0:%d", port), Config().Dev)
+	server.Run(fmt.Sprintf("0.0.0.0:%d", port), config.Config().Dev)
 }
 
 func RunWithPort(port int, version string) {
@@ -35,7 +34,7 @@ func RunWithPort(port int, version string) {
 
 	server.Initialize(version)
 
-	seed.Load(server.DB, Config().AdminEmail, Config().AdminPassword)
+	seed.Load(server.DB, config.Config().AdminEmail, config.Config().AdminPassword)
 
-	server.Run(fmt.Sprintf("0.0.0.0:%d", port), Config().Dev)
+	server.Run(fmt.Sprintf("0.0.0.0:%d", port), config.Config().Dev)
 }

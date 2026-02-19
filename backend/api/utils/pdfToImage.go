@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"backend/api/config"
 	"bytes"
 	"fmt"
 	"io"
@@ -11,8 +12,6 @@ import (
 	"path"
 	"path/filepath"
 	"time"
-
-	. "backend/api/config"
 )
 
 // POST request onto pdf creation Locat !
@@ -70,7 +69,7 @@ func sendRequest(pdfPath string, name string, remoteURL string) bool {
 	}
 
 	thumbnailPath := path.Join(
-		Config().ConfigPath,
+		config.Config().ConfigPath,
 		"sheets/thumbnails",
 		name+".png",
 	)
@@ -138,7 +137,7 @@ func Upload(client *http.Client, url string, values map[string]io.Reader, name s
 
 	// Save response
 	defer res.Body.Close()
-	out, err := os.Create(path.Join(Config().ConfigPath, "sheets/thumbnails", name+".png"))
+	out, err := os.Create(path.Join(config.Config().ConfigPath, "sheets/thumbnails", name+".png"))
 	if err != nil {
 		return
 	}

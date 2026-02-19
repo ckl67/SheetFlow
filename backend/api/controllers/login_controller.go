@@ -2,14 +2,12 @@ package controllers
 
 import (
 	"backend/api/auth"
+	"backend/api/config"
 	"backend/api/models"
 	"backend/api/utils/formaterror"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-
-	. "backend/api/config"
-
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,8 +19,9 @@ func (server *Server) Login(c *gin.Context) {
 		return
 	}
 
-	user.NormalizeEmail()
-	err = user.Validate("login")
+	// Normalisation de l'email
+	user.NormalizeEmail() // doit être exportée dans models/user.go
+
 	if err != nil {
 		c.String(http.StatusUnprocessableEntity, err.Error())
 		return
@@ -49,5 +48,5 @@ func (server *Server) SignIn(email, password string) (string, error) {
 	if err != nil && err == bcrypt.ErrMismatchedHashAndPassword {
 		return "", err
 	}
-	return auth.CreateToken(user.ID, Config().ApiSecret)
+	return auth.CreateToken(user.ID, config.Config().ApiSecret)
 }

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"sync"
@@ -9,6 +10,9 @@ import (
 	"github.com/golobby/config/v3/pkg/feeder"
 )
 
+// ========================================
+// Principes de configuration du serveur
+// ========================================
 // Flus de lecture
 // 1. NewConfig() initialise valeurs par défaut
 // 2. DotEnv feeder charge .env
@@ -17,6 +21,27 @@ import (
 //	github.com/golobby/config/v3
 //	Attention ne pas mélanger os.Getenv() et golobby/config
 
+// Configuration du serveur SMTP pour l'envoi d'emails (ex: réinitialisation de mot de passe, notifications, etc.)
+type SmtpConfig struct {
+	Enabled        string `env:"SMTP_ENABLED"`
+	From           string `env:"SMTP_FROM"`
+	HostServerAddr string `env:"SMTP_HOST"`
+	HostServerPort int    `env:"SMTP_PORT"`
+	Username       string `env:"SMTP_USERNAME"`
+	Password       string `env:"SMTP_PASSWORD"`
+}
+
+// Configuration de la base de données, utilisée pour se connecter à la base de données et effectuer des opérations CRUD.
+type DatabaseConfig struct {
+	Driver   string `env:"DB_DRIVER"`
+	Host     string `env:"DB_HOST"`
+	User     string `env:"DB_USER"`
+	Password string `env:"DB_PASSWORD"`
+	Name     string `env:"DB_NAME"`
+	Port     int    `env:"DB_PORT"`
+}
+
+// ServerConfig est la struct qui contient tous les paramètres de configuration du serveur.
 type ServerConfig struct {
 	AdminEmail    string `env:"ADMIN_EMAIL"`
 	AdminPassword string `env:"ADMIN_PASSWORD"`
@@ -27,36 +52,27 @@ type ServerConfig struct {
 	Dev  bool `env:"DEV"`
 	Port int  `env:"PORT"`
 
-	Database DatabaseConfig
-	Smtp     SmtpConfig
+	Database   DatabaseConfig
+	Smtp       SmtpConfig
+	CorsOrigin string `env:"CORS_ORIGIN"` //"https://app.sheetflow.com" ou "http://localhost:3000" pour dev, ou "*" pour autoriser toutes les origines
 }
 
-type SmtpConfig struct {
-	Enabled        string `env:"SMTP_ENABLED"`
-	From           string `env:"SMTP_FROM"`
-	HostServerAddr string `env:"SMTP_HOST"`
-	HostServerPort int    `env:"SMTP_PORT"`
-	Username       string `env:"SMTP_USERNAME"`
-	Password       string `env:"SMTP_PASSWORD"`
-}
-
-type DatabaseConfig struct {
-	Driver   string `env:"DB_DRIVER"`
-	Host     string `env:"DB_HOST"`
-	User     string `env:"DB_USER"`
-	Password string `env:"DB_PASSWORD"`
-	Name     string `env:"DB_NAME"`
-	Port     int    `env:"DB_PORT"`
-}
-
+// configBuilder est une struct utilisée pour construire la configuration du serveur à partir d'un fichier .env et des variables d'environnement.
 type configBuilder struct {
 	dotenvFile           string
 	errorOnMissingDotenv bool
 }
 
+// Singleton pattern pour la configuration du serveur
+// Le sync.Once est l'outil standard en Go pour implémenter proprement le Pattern Singleton.
+// Il garantit qu'une action spécifique ne soit exécutée qu'une seule fois,
+// même si ton code essaie de l'appeler depuis plusieurs endroits en même temps
 var (
-	serverConfig ServerConfig
-	configOnce   sync.Once
+	// La "boîte" qui contient les données
+	serverConfig ServerConfig // 's' minuscule = privé au package
+
+	// Le "gardien" qui se souvient si on a déjà rempli la boîte
+	configOnce sync.Once
 )
 
 func (c ServerConfig) LogSafe() {
@@ -76,6 +92,7 @@ func (c ServerConfig) LogSafe() {
 	log.Printf("  DB Password: %s\n", c.Database.Password) // Affiche la configuration de la base de données, y compris le mot de passe (à éviter en production)
 	log.Printf("  Name: %s\n", c.Database.Name)
 	log.Printf("  Port: %d\n", c.Database.Port)
+	log.Printf("	CORS Origin: %s\n", c.CorsOrigin)
 
 	log.Println("SMTP:")
 	log.Printf("  Enabled: %s\n", c.Smtp.Enabled)
@@ -114,11 +131,13 @@ func (b configBuilder) PanicOnMissingDotenv(status bool) configBuilder {
 // La fonction Config() est utilisée dans tout le code pour accéder à la configuration du serveur,
 // par exemple dans server.go, users_controller.go, etc.
 // Elle retourne une instance de ServerConfig qui contient tous les paramètres de configuration nécessaires pour le serveur.
-// La configuration est chargée à partir d'un fichier .env (si spécifié) et des variables d'environnement,
-// avec des valeurs par défaut définies dans la struct ServerConfig.
-// Cela permet une grande flexibilité pour configurer le serveur en fonction de l'environnement de déploiement (développement, production, etc.).
 func Config() ServerConfig {
+	// La magie est ici : le code à l'intérieur de la fonction anonyme
+	// ne s'exécutera qu'une seule fois dans toute la vie du programme.
+
 	configOnce.Do(func() {
+		fmt.Println("Chargement de la configuration...")
+		// Ici on appelle le builder pour remplir serverConfig
 		serverConfig = ConfigBuilder().Build()
 	})
 	return serverConfig
@@ -162,6 +181,7 @@ func NewConfig() ServerConfig {
 		ApiSecret:     "sheetflow_secret_key",
 		ServerUrl:     "http://localhost:8080",
 		ConfigPath:    "./config/",
+		CorsOrigin:    "",
 		Database: DatabaseConfig{
 			Driver: "sqlite",
 		},

@@ -1,18 +1,17 @@
 package controllers
 
 import (
+	"backend/api/config"
+	"backend/api/forms"
+	"backend/api/models"
+	"backend/api/utils"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path"
 
-	. "backend/api/config"
-	"backend/api/forms"
-	"backend/api/models"
-	"backend/api/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/kennygrant/sanitize"
 )
 
 /*
@@ -119,7 +118,7 @@ Example request:
 */
 func (server *Server) ServePortraits(c *gin.Context) {
 	name := c.Param("composerName")
-	filePath := path.Join(Config().ConfigPath, "composer", name+".png")
+	filePath := path.Join(config.Config().ConfigPath, "composer", name+".png")
 	c.File(filePath)
 }
 
@@ -128,7 +127,6 @@ Upload a portrait
 ! Currently only PNG files supported
 */
 func uploadPortait(form forms.UpdateComposersRequest, compName string, originalName string) bool {
-
 	if form.File == nil {
 		return false
 	}
@@ -140,8 +138,8 @@ func uploadPortait(form forms.UpdateComposersRequest, compName string, originalN
 	defer portrait.Close()
 
 	// Create the composer Directory if it doesn't exist yet
-	dir := path.Join(Config().ConfigPath, "composer")
-	fullpath := path.Join(dir, sanitize.Name(compName)+".png")
+	dir := path.Join(config.Config().ConfigPath, "composer")
+	fullpath := path.Join(dir, utils.SanitizeName(compName)+".png")
 	if originalName != compName {
 		os.Remove(path.Join(dir, originalName+".png"))
 	}

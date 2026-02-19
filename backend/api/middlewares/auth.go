@@ -9,23 +9,28 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// AuthMiddleware vérifie que le JWT fourni est valide.
+// Si oui, il injecte user_id dans le contexte Gin pour le handler.
 func AuthMiddleware() gin.HandlerFunc {
-	/*
-		Do any initial setup for the middleware once here
-
-		- Load config value in case config management
-		- Changes implementation where it could be a slow operation to fetch values
-		- Like fetching over the net to a vault/secrets server
-	*/
 	secret := config.Config().ApiSecret
 
 	return func(c *gin.Context) {
-		err := auth.TokenValid(utils.ExtractToken(c), secret)
-		if err != nil {
+		tokenString := utils.ExtractToken(c) // récupère le token depuis le header Authorization
 
+		// Vérifie que le token est valide
+		if err := auth.TokenValid(tokenString, secret); err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return
 		}
+
+		// Récupère l'user_id et l'ajoute au contexte
+		userID, err := auth.ExtractTokenID(tokenString, secret)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			return
+		}
+
+		c.Set("user_id", userID)
 		c.Next()
 	}
 }

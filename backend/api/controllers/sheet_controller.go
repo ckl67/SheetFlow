@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"backend/api/auth"
+	"backend/api/config"
 	"backend/api/forms"
 	"backend/api/models"
 	"backend/api/utils"
@@ -9,8 +10,6 @@ import (
 	"fmt"
 	"net/http"
 	"path"
-
-	. "backend/api/config"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -86,7 +85,7 @@ sheetname and composer name have to be the safeName of them
 func (server *Server) GetPDF(c *gin.Context) {
 	sheetName := c.Param("sheetName") + ".pdf"
 	composer := c.Param("composer")
-	filePath := path.Join(Config().ConfigPath, "sheets/uploaded-sheets", composer, sheetName)
+	filePath := path.Join(config.Config().ConfigPath, "sheets/uploaded-sheets", composer, sheetName)
 	c.File(filePath)
 }
 
@@ -96,7 +95,7 @@ name = safename of sheet
 */
 func (server *Server) GetThumbnail(c *gin.Context) {
 	name := c.Param("name") + ".png"
-	filePath := path.Join(Config().ConfigPath, "sheets/thumbnails", name)
+	filePath := path.Join(config.Config().ConfigPath, "sheets/thumbnails", name)
 	c.File(filePath)
 }
 
@@ -106,7 +105,7 @@ func (server *Server) DeleteSheet(c *gin.Context) {
 
 	// Is this user authenticated?
 	token := utils.ExtractToken(c)
-	_, err := auth.ExtractTokenID(token, Config().ApiSecret)
+	_, err := auth.ExtractTokenID(token, config.Config().ApiSecret)
 	if err != nil {
 		c.String(http.StatusUnauthorized, "Unauthorized")
 		return

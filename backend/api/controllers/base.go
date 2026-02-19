@@ -12,12 +12,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
-	"github.com/gorilla/handlers"
-	"github.com/rs/cors"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	"github.com/gin-contrib/cors"
 )
 
 type Server struct {
@@ -30,6 +30,8 @@ func (server *Server) Initialize(version string) {
 	var err error
 
 	server.Version = version
+
+	// Charger la configuration du serveur
 	cfg := config.Config()
 
 	DbDriver := cfg.Database.Driver
@@ -111,40 +113,39 @@ func (server *Server) Initialize(version string) {
 
 func (server *Server) Run(addr string, dev bool) {
 	fmt.Printf("Listening to port %v\n", addr)
-	/*
-		cors.Default() setup the middleware with default options being
-		all origins accepted with simple methods (GET, POST).
-		See documentation below for more options.
-	*/
-	c := cors.New(cors.Options{
-		// Enable Debugging for testing, consider disabling in production
-		AllowedHeaders: []string{
-			"Origin",
-			"X-Requested-With",
-			"Content-Type",
-			"Accept",
-			"Authorization",
-		},
-		AllowedMethods: []string{
-			http.MethodHead,
-			http.MethodGet,
-			http.MethodPost,
-			http.MethodPut,
-			http.MethodPatch,
-			http.MethodDelete,
-		},
-		AllowCredentials: true,
-	})
 
-	// Check if run in dev mode, so you can enable CORS or not
-	srvHandler := handlers.LoggingHandler(os.Stdout, c.Handler(server.Router))
+	// Logger Gin (équivalent LoggingHandler)
+	server.Router.Use(gin.Logger())
+	server.Router.Use(gin.Recovery())
 
-	if !dev {
-		srvHandler = handlers.LoggingHandler(os.Stdout, server.Router)
+	// Activer CORS uniquement en mode dev
+	// Frontend: http://localhost:3000
+	// Backend:  http://localhost:8080
+	// Origines différentes ⇒ CORS requis.
+
+	if config.Config().CorsOrigin != "" {
+		server.Router.Use(cors.New(cors.Config{
+			AllowOrigins: []string{config.Config().CorsOrigin},
+			AllowMethods: []string{
+				http.MethodHead,
+				http.MethodGet,
+				http.MethodPost,
+				http.MethodPut,
+				http.MethodPatch,
+				http.MethodDelete,
+			},
+			AllowHeaders: []string{
+				"Origin",
+				"Content-Type",
+				"Authorization",
+			},
+			AllowCredentials: true,
+			MaxAge:           12 * time.Hour,
+		}))
 	}
 
 	srv := &http.Server{
-		Handler:      srvHandler,
+		Handler:      server.Router, // plus besoin de wrapper
 		Addr:         addr,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,

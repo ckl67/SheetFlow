@@ -8,6 +8,7 @@ package controllers
 
 import (
 	"backend/api/auth"
+	"backend/api/config"
 	"backend/api/forms"
 	"backend/api/models"
 	"backend/api/utils"
@@ -22,12 +23,8 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/fiam/gounidecode/unidecode"
 	"github.com/gin-gonic/gin"
-
-	. "backend/api/config"
-
-	"github.com/kennygrant/sanitize"
+	"github.com/mozillazg/go-unidecode"
 )
 
 // Structs for handling the response on the Open Opus API
@@ -49,7 +46,7 @@ type Comp struct {
 func (server *Server) UploadFile(c *gin.Context) {
 	// Check for authentication
 	token := utils.ExtractToken(c)
-	uid, err := auth.ExtractTokenID(token, Config().ApiSecret)
+	uid, err := auth.ExtractTokenID(token, config.Config().ApiSecret)
 	if err != nil || uid == 0 {
 		c.String(http.StatusUnauthorized, "Unauthorized")
 		return
@@ -65,9 +62,9 @@ func (server *Server) UploadFile(c *gin.Context) {
 		return
 	}
 
-	prePath := path.Join(Config().ConfigPath, "sheets")
-	uploadPath := path.Join(Config().ConfigPath, "sheets/uploaded-sheets")
-	thumbnailPath := path.Join(Config().ConfigPath, "sheets/thumbnails")
+	prePath := path.Join(config.Config().ConfigPath, "sheets")
+	uploadPath := path.Join(config.Config().ConfigPath, "sheets/uploaded-sheets")
+	thumbnailPath := path.Join(config.Config().ConfigPath, "sheets/thumbnails")
 
 	// Save composer in the database
 	comp := safeComposer(server, uploadForm.Composer)
@@ -103,7 +100,7 @@ func (server *Server) UploadFile(c *gin.Context) {
 	}
 
 	// Send POST request to python server for creating the thumbnail (first page of pdf as an image)
-	if !utils.RequestToPdfToImage(fullpath, sanitize.Name(Unidecode(sheetName))) {
+	if !utils.RequestToPdfToImage(fullpath, utils.SafeFileName(sheetName)) {
 		return
 	}
 
@@ -114,7 +111,7 @@ func (server *Server) UploadFile(c *gin.Context) {
 func (server *Server) UpdateSheet(c *gin.Context) {
 	// Check for authentication
 	token := utils.ExtractToken(c)
-	uid, err := auth.ExtractTokenID(token, Config().ApiSecret)
+	uid, err := auth.ExtractTokenID(token, config.Config().ApiSecret)
 	if err != nil || uid == 0 {
 		c.String(http.StatusUnauthorized, "Unauthorized")
 		return
@@ -140,7 +137,7 @@ func getPortraitURL(composerName string) Comp {
 
 		return Comp{
 			CompleteName: composerName,
-			SafeName:     sanitize.Name(Unidecode(composerName)),
+			SafeName:     utils.SanitizeName(unidecode.Unidecode(composerName)),
 			Portrait:     "https://icon-library.com/images/unknown-person-icon/unknown-person-icon-4.jpg",
 			Epoch:        "Unknown",
 		}
@@ -163,7 +160,7 @@ func getPortraitURL(composerName string) Comp {
 	if len(composers) == 0 || (!strings.EqualFold(composerName, composers[0].Name) && !strings.EqualFold(composerName, composers[0].CompleteName)) {
 		return Comp{
 			CompleteName: composerName,
-			SafeName:     sanitize.Name(Unidecode(composerName)),
+			SafeName:     utils.SanitizeName(unidecode.Unidecode(composerName)),
 			Portrait:     "https://icon-library.com/images/unknown-person-icon/unknown-person-icon-4.jpg",
 			Epoch:        "Unknown",
 		}
@@ -177,8 +174,8 @@ func safeComposer(server *Server, composer string) Comp {
 
 	if compo.SafeName == "" {
 		// Used for chinese/japanese chars etc
-		unideCodeName := Unidecode(compo.CompleteName)
-		compo.SafeName = sanitize.Name(unideCodeName)
+		unideCodeName := unidecode.Unidecode(compo.CompleteName)
+		compo.SafeName = utils.SanitizeName(unideCodeName)
 	}
 
 	comp := models.Composer{
@@ -218,8 +215,8 @@ func createFile(
 	categories string,
 	tags string,
 ) error {
-	safeComposer := sanitize.Name(Unidecode(strings.TrimSpace(comp.CompleteName)))
-	safeSheetName := sanitize.Name(Unidecode(strings.TrimSpace(sheetName)))
+	safeComposer := utils.SanitizeName(unidecode.Unidecode(strings.TrimSpace(comp.CompleteName)))
+	safeSheetName := utils.SanitizeName(unidecode.Unidecode(strings.TrimSpace(sheetName)))
 
 	// parser tags et categories en slice
 	tagSlice := parseSemicolonList(tags)
@@ -280,7 +277,7 @@ func createDate(date string) time.Time {
 
 func checkFile(pathName string, sheetName string) (string, error) {
 	// Check if the file already exists
-	fullpath := fmt.Sprintf("%s/%s.pdf", pathName, sanitize.Name(Unidecode(sheetName)))
+	fullpath := fmt.Sprintf("%s/%s.pdf", pathName, utils.SanitizeName(unidecode.Unidecode(sheetName)))
 	if _, err := os.Stat(fullpath); err == nil {
 		return "", errors.New("file already exists")
 	}

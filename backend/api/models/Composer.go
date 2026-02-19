@@ -2,6 +2,7 @@ package models
 
 import (
 	"backend/api/config"
+	"backend/api/utils"
 	"errors"
 	"fmt"
 	"os"
@@ -11,8 +12,6 @@ import (
 	"time"
 
 	"gorm.io/gorm"
-
-	"github.com/kennygrant/sanitize"
 )
 
 type Composer struct {
@@ -54,7 +53,7 @@ func (c *Composer) UpdateComposer(db *gorm.DB, originalName string, updatedName 
 
 	if updatedName != "" {
 		composer.Name = updatedName
-		composer.SafeName = sanitize.Name(updatedName)
+		composer.SafeName = utils.SanitizeName(updatedName)
 	}
 	if portraitUrl != "" {
 		composer.PortraitURL = portraitUrl
@@ -71,12 +70,12 @@ func (c *Composer) UpdateComposer(db *gorm.DB, originalName string, updatedName 
 	db.Save(&composer)
 
 	// Update Sheets with that composer
-	db.Exec("UPDATE sheets SET pdf_url = REPLACE(pdf_url, ?, ?) WHERE safe_composer = ?;", originalName, sanitize.Name(updatedName), originalName)
-	db.Model(&Sheet{}).Where("safe_composer = ?", originalName).Update("safe_composer", sanitize.Name(updatedName))
-	db.Model(&Sheet{}).Where("safe_composer = ?", sanitize.Name(updatedName)).Update("composer", updatedName)
+	db.Exec("UPDATE sheets SET pdf_url = REPLACE(pdf_url, ?, ?) WHERE safe_composer = ?;", originalName, utils.SanitizeName(updatedName), originalName)
+	db.Model(&Sheet{}).Where("safe_composer = ?", originalName).Update("safe_composer", utils.SanitizeName(updatedName))
+	db.Model(&Sheet{}).Where("safe_composer = ?", utils.SanitizeName(updatedName)).Update("composer", updatedName)
 	// Rename folder
 	p := path.Join(config.Config().ConfigPath, "sheets/uploaded-sheets/")
-	os.Rename(p+"/"+originalName, p+"/"+sanitize.Name(updatedName))
+	os.Rename(p+"/"+originalName, p+"/"+utils.SanitizeName(updatedName))
 
 	return composer, nil
 }
