@@ -10,10 +10,9 @@ import (
 // server.Initialize() appelle server.SetupRouter() (fichier routes.go)
 // SetupRouter() (dans routes.go) définit toutes les routes Gin
 
-func main() {
-	var version string
+var Version string = "DEV"
 
-	version = "v1.0.0"
-	utils.PrintAsciiVersion(version) // affiche une bannière ASCII avec la version du serveur fichier version.go
-	api.Run(version)                 // appelle api.Run() dans server.go pour démarrer le serveur Gin
+func main() {
+	utils.PrintAsciiVersion(Version) // affiche une bannière ASCII avec la version du serveur fichier version.go
+	api.Run(Version)                 // appelle api.Run() dans server.go pour démarrer le serveur Gin
 }

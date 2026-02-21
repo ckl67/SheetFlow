@@ -10,7 +10,7 @@ all: tidy build
 ## build: Compile le projet en binaire statique (parfait pour Docker/Linux)
 build:
 	@echo "==> Compilation du binaire..."
-	CGO_ENABLED=0 $(GO) build -o $(BINARY_NAME) main.go
+	CGO_ENABLED=0 $(GO) build -o build/$(BINARY_NAME) main.go
 
 ## tidy: Organise et nettoie le fichier go.mod
 tidy:
@@ -20,7 +20,7 @@ tidy:
 ## clean: Supprime le binaire local
 clean:
 	@echo "==> Suppression du binaire..."
-	rm -f $(BINARY_NAME)
+	rm -f build/$(BINARY_NAME)
 
 ## reset: Nettoie le cache des modules et retélécharge tout (ton go clean -modcache)
 reset:

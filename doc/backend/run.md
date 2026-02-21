@@ -1,29 +1,37 @@
-# Étape obligatoire côté terminal
+# Étape obligatoire avant run
 
-## Configurer le fichier config.go
+Principes de configuration du serveur
 
-Il faut utiliser un mot de passe d'application
+1. NewConfig() initialise valeurs par défaut
+2. DotEnv charge fichier .env
+3. Env feeder surcharge variables système
 
-Les mots de passe d'application ne s'utilisent pas avec Authenticator.
+## Configurer le fichier api/config.config.go
 
+A travers NewConfig()
+
+Pour le mot de passe SMTP :
+export SMTP_PASSWORD="ton_mot_de_passe_application_gmail"
+
+Exemple Google :
 Utilisez la barre de recherche en haut de votre compte Google et tapez directement "Mots de passe d'application".
-
-export SMTP_PASSWORD="mot_de_passe_application_gmail"
 
 ## Fichier environnement
 
 .env
 
-à la racine du backend.
-Et y mettre uniquement ce dont tu as besoin.
+A la racine du backend y mettre uniquement ce dont tu as besoin.
 
-Exemple minimal pour ton cas :
-
+```shell
 DB_DRIVER=sqlite
 PORT=7373
 DEV=1
+```
 
 # Run
 
 make run
 make build
+
+ou
+go run -ldflags="-X main.Version=1.2.3" main.go

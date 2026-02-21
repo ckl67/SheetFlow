@@ -173,7 +173,8 @@ func (b configBuilder) Build() ServerConfig {
 
 // Cette fonction NewConfig() est utilisée pour définir les valeurs par défaut de la configuration du serveur.
 // Ces valeurs par défaut sont utilisées si les paramètres correspondants ne sont pas définis dans le fichier .env ou les variables d'environnement.
-// Par exemple, si DB_DRIVER n'est pas défini dans le fichier .env ou les variables d'environnement, la valeur par défaut "sqlite" sera utilisée pour la configuration de la base de données.
+// Par exemple, si DB_DRIVER n'est pas défini dans le fichier .env ou les variables d'environnement,
+// la valeur par défaut "sqlite" sera utilisée pour la configuration de la base de données.
 func NewConfig() ServerConfig {
 	return ServerConfig{
 		AdminEmail:    "admin@admin.com",
@@ -191,7 +192,7 @@ func NewConfig() ServerConfig {
 			HostServerAddr: "smtp.gmail.com",
 			HostServerPort: 587,
 			Username:       "christian.klugesherz@gmail.com",
-			Password:       "", // récupéré depuis variable d'environnement
+			Password:       "", // récupéré depuis variable d'environnement : SMTP_PASSWORD
 		},
 	}
 }

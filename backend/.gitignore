@@ -1,15 +1,17 @@
-# Ignorer les .env
+# Racine du Repo = /backend
+
+# Ignorer les variables d'environnement .env
 .env
 .env.*
 
-# Ignorer /config
+# Ignorer /config == Répertoire où sont stockées les partitions et la base de données
 # /config/ → chemin absolu depuis la racine du repo
 # Le / au début signifie “à partir de la racine du dépôt Git”.
 # Git va ignorer uniquement le dossier config situé à la racine du repo, pas un config dans un sous-dossier.
 /config/
 
 # Exceptions pour certains fichiers
-!api/config/config.go
+# !api/config/config.go
 
-# Autres dossiers
+# Fichier Buil
 build/
