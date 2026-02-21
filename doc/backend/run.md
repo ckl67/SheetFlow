@@ -56,18 +56,15 @@ go run -ldflags="-X main.Version=1.2.3 -X main.BuildDate=2024-05-20" main.go
 
 ### creation tag
 
-Grace à la comme git
-
 ```shell
 git describe --tags --abbrev=0
 ```
 
 Exemple
-Basculez sur Master :
-Ramenez les modifications de Dev vers Master :
-Créer le premier Tag (v0.1.0)
-Affichage Tag
-Pousser le tag vers le serveur
+
+- Basculez sur Master :
+- Ramenez les modifications de Dev vers Master :
+- Créer le premier Tag (v0.1.0)
 
 ```shell
 git checkout master
@@ -79,6 +76,16 @@ GIT_VER=$(git describe --tags --abbrev=0)
 echo $GIT_VER
 --> va afficher v0.1.0
 ```
+
+### Distance par rapport au tag
+
+Si vous faites de nouveaux commits sur dev et que vous relancez la commande suivante
+
+```shell
+git describe --tags
+```
+
+Git vous répondra quelque chose comme v0.1.0-5-g1a2b3c (signifiant : 5 commits après la v0.1.0, hash 1a2b3c).
 
 ### Run et Compilation avec Tag git
 

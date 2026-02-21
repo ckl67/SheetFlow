@@ -21,9 +21,12 @@ func Run(version string) {
 	// puis crée un utilisateur administrateur avec les informations fournies (email et mot de passe) dans la configuration.
 	seed.Load(server.DB, config.Config().AdminEmail, config.Config().AdminPassword)
 
-	port := 8080
+	var port int
+
 	if config.Config().Port != 0 {
 		port = config.Config().Port
+	} else {
+		port = 8080
 	}
 
 	server.Run(fmt.Sprintf("0.0.0.0:%d", port), config.Config().Dev)
